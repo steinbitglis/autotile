@@ -1,0 +1,6 @@
+[submodule "Assets/Plugins/Autotile"]
+	path = Assets/Plugins/Autotile
+	url = /cygdrive/c/autotile/Plugins/Autotile/.git
+[submodule "Assets/Plugins/Editor/Autotile"]
+	path = Assets/Plugins/Editor/Autotile
+	url = /cygdrive/c/autotile/Plugins/Editor/Autotile/.git
