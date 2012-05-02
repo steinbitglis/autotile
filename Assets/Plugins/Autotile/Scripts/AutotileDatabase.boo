@@ -17,6 +17,8 @@ class Tile:
 class AutotileCenterSet:
     [System.NonSerialized]
     public show = false
+    [System.NonSerialized]
+    public showRemoveOption = false
     public leftFace = Tile()
     public rightFace = Tile()
     public downFace = Tile()
@@ -24,7 +26,7 @@ class AutotileCenterSet:
     public doubleHorizontalFace = Tile()
     public doubleVerticalFace = Tile()
 
-class AutotileCorners:
+class AutotileCorners (IEnumerable[Tile]):
     //
     //            - ----------------------------------------------------------------------- -
     //            - -- Center piece naming convention for horizontal and vertical pieces -- -
@@ -132,6 +134,59 @@ class AutotileCorners:
             return fieldInfo.GetValue(self) as Tile if fieldInfo
             return bbbb
 
+    private myGetEnumerator = GetEnumerator
+    public def GetEnumerator() as Generic.IEnumerator[of Tile]:
+        yield aaaa
+        yield aaad
+        yield aada
+        yield aadd
+        yield aarg
+        yield adaa
+        yield adad
+        yield adda
+        yield addd
+        yield adrg
+        yield agbg
+        yield agla
+        yield agld
+        yield bbbb
+        yield bblc
+        yield bcac
+        yield bcdc
+        yield bcrb
+        yield daaa
+        yield daad
+        yield dada
+        yield dadd
+        yield darg
+        yield ddaa
+        yield ddad
+        yield ddda
+        yield dddd
+        yield ddrg
+        yield dgbg
+        yield dgla
+        yield dgld
+        yield lbbg
+        yield lbla
+        yield lbld
+        yield lcaa
+        yield lcad
+        yield lcda
+        yield lcdd
+        yield lcrg
+        yield raac
+        yield radc
+        yield rarb
+        yield rdac
+        yield rddc
+        yield rdrb
+        yield rgbb
+        yield rglc
+
+    def IEnumerable.GetEnumerator() as IEnumerator:
+        return myGetEnumerator()
+
 class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenterSet]]):
     [SerializeField]
     private keys = List of int()
@@ -170,6 +225,13 @@ class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenter
         get:
             return self.backingDictionary[index]
 
+    public Count as int:
+        get:
+            return self.backingDictionary.Count
+
+    public def ContainsKey(k as int) as bool:
+        return self.backingDictionary.ContainsKey(k)
+
     private myGetEnumerator = GetEnumerator
     public def GetEnumerator() as Generic.IEnumerator[of KeyValuePair[of int, AutotileCenterSet]]:
         for pair as KeyValuePair[of int, AutotileCenterSet] in self.backingDictionary:
@@ -184,10 +246,20 @@ class AutotileSet:
     public show = false
 
     [System.NonSerialized]
-    public newCandidate = 0
+    public newCandidate = 2
+
+    [System.NonSerialized]
+    public showSettings = true
+    public tileSize = 128
+    public material as Material
+
+    [System.NonSerialized]
+    public showRemoveOption = false
 
     [System.NonSerialized]
     public showCenterSets = false
+    [System.NonSerialized]
+    public showNewCenterSetOption = false
     public centerSets = AutotileCenterSetDatabase()
 
     [System.NonSerialized]
@@ -231,6 +303,10 @@ class AutotileSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileSet]])
             values.Add(value)
         get:
             return self.backingDictionary[index]
+
+    public Count as int:
+        get:
+            return self.backingDictionary.Count
 
     public myGetEnumerator = GetEnumerator
     public def GetEnumerator() as Generic.IEnumerator[of KeyValuePair[of string, AutotileSet]]:

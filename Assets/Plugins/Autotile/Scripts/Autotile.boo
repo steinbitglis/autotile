@@ -332,6 +332,13 @@ class Autotile (MonoBehaviour):
         GetComponent of MeshFilter().sharedMesh = Mesh()
         ApplyCentric()
 
+    def Update():
+        ifdef UNITY_EDITOR:
+            pos = transform.position
+            unless pos.z == 0.0f:
+                pos.z = 0.0f
+                transform.position = pos
+
     def ConnectionCanReachHorizontaly(c_index as int, worldPoint as Vector3) as bool:
         p = transform.position
         r_core = IndexSet.right_wing_core
@@ -855,10 +862,11 @@ class Autotile (MonoBehaviour):
             Vector2(tile.atlasLocation.xMax, tile.atlasLocation.yMin),
             Vector2(tile.atlasLocation.xMin, tile.atlasLocation.yMin))
         mf = GetComponent of MeshFilter()
-        mf.sharedMesh.vertices = OffsetVertices(Autotile.singleVertices)
-        mf.sharedMesh.triangles = Autotile.singleTriangles
-        mf.sharedMesh.uv = uvs
-        mf.sharedMesh.RecalculateNormals()
+        if mf.sharedMesh:
+            mf.sharedMesh.vertices = OffsetVertices(Autotile.singleVertices)
+            mf.sharedMesh.triangles = Autotile.singleTriangles
+            mf.sharedMesh.uv = uvs
+            mf.sharedMesh.RecalculateNormals()
 
     private class Descending (System.Collections.Generic.IComparer[of int]):
         public def Compare(left as int, right as int) as int:

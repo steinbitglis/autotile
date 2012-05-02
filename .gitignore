@@ -9,3 +9,6 @@ Test.meta
 *.unityproj
 *.pidb
 *.sln
+/Build/
+/Library/
+/Temp/
