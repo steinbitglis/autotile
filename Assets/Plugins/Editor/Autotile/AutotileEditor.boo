@@ -8,15 +8,43 @@ class AutotileEditor (Editor):
     tile as Autotile
     localTransform as Transform
 
+    squeezeModeProp    as SerializedProperty
+    horizontalFaceProp as SerializedProperty
+    verticalFaceProp   as SerializedProperty
+    tileModeProp       as SerializedProperty
+
     def Awake():
         tile = target as Autotile
+
+        squeezeModeProp    = serializedObject.FindProperty("squeezeMode")
+        horizontalFaceProp = serializedObject.FindProperty("horizontalFace")
+        verticalFaceProp   = serializedObject.FindProperty("verticalFace")
+        tileModeProp       = serializedObject.FindProperty("tileMode")
+
         localTransform = tile.transform
 
     virtual def OnInspectorGUI():
-        DrawDefaultInspector()
+        serializedObject.Update()
+
+        tilesets = array(string, AutotileConfig.config.sets.Count)
+        for i as int, e as KeyValuePair[of string, AutotileSet] in enumerate(AutotileConfig.config.sets):
+            currentIndex = i if e.Key == tile.tilesetKey
+            tilesets[i] = e.Key
+        unless tile.tilesetKey in tilesets:
+            tilesets = ("",) + tilesets
+        newIndex = EditorGUILayout.Popup("Tileset", currentIndex, tilesets)
+        if newIndex != currentIndex:
+            Undo.RegisterUndo(tile, "Autotile tileset")
+            currentIndex = newIndex
+            tile.tilesetKey = tilesets[newIndex]
+            tile.renderer.material = AutotileConfig.config.sets[tile.tilesetKey].material
+            EditorUtility.SetDirty(tile)
+
+        EditorGUILayout.PropertyField(squeezeModeProp, GUIContent("Squeeze Mode"))
+        EditorGUILayout.PropertyField(horizontalFaceProp, GUIContent("Horizontal Face"))
+        EditorGUILayout.PropertyField(verticalFaceProp, GUIContent("Vertical Face"))
         GUI.enabled = false
-        EditorGUILayout.EnumPopup("Tile Mode", tile.tileMode)
-        EditorGUILayout.EnumPopup("Offset Mode", tile.offsetMode)
+        EditorGUILayout.PropertyField(tileModeProp, GUIContent("Tile Mode"))
         GUI.enabled = true
         if GUILayout.Button("Reset all connections"):
             tile.ResetAllConnections()
@@ -47,6 +75,7 @@ class AutotileEditor (Editor):
             tile.offsetMode = OffsetMode.Bottom
             EditorUtility.SetDirty(tile)
 
+        serializedObject.ApplyModifiedProperties()
         tile.Refresh()
 
     def DrawAutotileConnections():

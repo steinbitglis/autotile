@@ -5,11 +5,11 @@ macro descending_faces(faceType as Boo.Lang.Compiler.Ast.ReferenceExpression):
     fnName = Boo.Lang.Compiler.Ast.ReferenceExpression("Descending" + faceType.Name[0:1].ToUpper() + faceType.Name[1:] + "Faces")
     faceName = Boo.Lang.Compiler.Ast.ReferenceExpression(faceType.Name + "Face")
     yield [|
-        private def $fnName(autotileSet as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]:
-            tileSet = Generic.SortedDictionary[of int, Tile](Autotile.Descending())
-            for kv as Generic.KeyValuePair[of int, AutotileCenterSet] in AutotileConfig.config.sets[autotileSet].centerSets:
-                tileSet[kv.Key] = kv.Value.$faceName
-            return tileSet
+        private def $fnName(autotileset as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]:
+            tileset = Generic.SortedDictionary[of int, Tile](Autotile.Descending())
+            for kv as Generic.KeyValuePair[of int, AutotileCenterSet] in AutotileConfig.config.sets[autotileset].centerSets:
+                tileset[kv.Key] = kv.Value.$faceName
+            return tileset
     |]
 
 enum HorizontalFace:
@@ -182,12 +182,10 @@ class Autotile (MonoBehaviour):
                             i_right_up, i_right_down, i_up,        i_up_left,
                             i_up_right, i_down,       i_down_left, i_down_right)
 
-    [HideInInspector]
+    public tilesetKey as string
     public tileMode as TileMode
-    [HideInInspector]
     public secondaryTileMode as TileMode
     public squeezeMode = SqueezeMode.Clip
-    [HideInInspector]
     public connections = AutotileConnections()
 
     def Connect(local_index as int, remote as Autotile, remote_index as int):
@@ -283,11 +281,11 @@ class Autotile (MonoBehaviour):
     public horizontalFace = HorizontalFace.Double
     public verticalFace = VerticalFace.Double
 
-    [HideInInspector]
     public offset as Vector3
-    [SerializeField, HideInInspector]
+    [SerializeField]
     private _offsetMode = OffsetMode.Center
 
+    private applied_tileset_key = ""
     private applied_horizontal_face = HorizontalFace.Up
     private applied_vertical_face = VerticalFace.Left
     private applied_scale = Vector3.one
@@ -409,7 +407,6 @@ class Autotile (MonoBehaviour):
         MoveCToPos(c_index, position)
         PushNeighbours()
 
-    [HideInInspector]
     public conforming = false
     def PushNeighbours():
         unless conforming:
@@ -872,10 +869,10 @@ class Autotile (MonoBehaviour):
         public def Compare(left as int, right as int) as int:
             return System.Collections.Generic.Comparer[of int].Default.Compare(right, left)
 
-    private def DescendingNoneFaces(autotileSet as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]:
-        tileSet = Generic.List[of Generic.KeyValuePair[of int, Tile]]()
-        tileSet.Add(Generic.KeyValuePair[of int, Tile](1, AutotileConfig.config.sets[autotileSet].corners.bbbb))
-        return tileSet
+    private def DescendingNoneFaces(autotileset as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]:
+        tileset = Generic.List[of Generic.KeyValuePair[of int, Tile]]()
+        tileset.Add(Generic.KeyValuePair[of int, Tile](1, AutotileConfig.config.sets[autotileset].corners.bbbb))
+        return tileset
 
     descending_faces up
     descending_faces down
@@ -1000,7 +997,7 @@ class Autotile (MonoBehaviour):
             z = "g"
             z = "d"
 
-        return AutotileConfig.config.sets["Stone"].corners["$w$x$y$z"]
+        return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
 
     def getLeftCorner(air_info as AirInfo):
         w = getVerticalConnectionClassification(\
@@ -1030,7 +1027,7 @@ class Autotile (MonoBehaviour):
                 z = "b"
                 z = "a"
 
-        return AutotileConfig.config.sets["Stone"].corners["$w$x$y$z"]
+        return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
 
     def getTopCorner(air_info as AirInfo):
         u = connections.up
@@ -1060,7 +1057,7 @@ class Autotile (MonoBehaviour):
                 air_info.up,
                 air_info.left)
 
-        return AutotileConfig.config.sets["Stone"].corners["$w$x$y$z"]
+        return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
 
     def getBottomCorner(air_info as AirInfo):
         vface_directions_lrx verticalFace:
@@ -1090,7 +1087,7 @@ class Autotile (MonoBehaviour):
                 air_info.left,
                 air_info.down)
 
-        return AutotileConfig.config.sets["Stone"].corners["$w$x$y$z"]
+        return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
 
     def ApplyHorizontal(dim as int):
         try:
@@ -1100,14 +1097,14 @@ class Autotile (MonoBehaviour):
                 ApplyHorizontalTile()
             else:
                 if horizontalFace == HorizontalFace.Up:
-                    ApplyHorizontalTile(DescendingUpFaces("Stone"))
+                    ApplyHorizontalTile(DescendingUpFaces(tilesetKey))
                 elif horizontalFace == HorizontalFace.Down:
-                    ApplyHorizontalTile(DescendingDownFaces("Stone"))
+                    ApplyHorizontalTile(DescendingDownFaces(tilesetKey))
                 elif horizontalFace == HorizontalFace.None:
-                    ApplyHorizontalTile(DescendingNoneFaces("Stone"))
+                    ApplyHorizontalTile(DescendingNoneFaces(tilesetKey))
                 else:
                     horizontalFace = HorizontalFace.Double
-                    ApplyHorizontalTile(DescendingDoubleHorizontalFaces("Stone"))
+                    ApplyHorizontalTile(DescendingDoubleHorizontalFaces(tilesetKey))
         except e as Generic.KeyNotFoundException:
             return
 
@@ -1119,14 +1116,14 @@ class Autotile (MonoBehaviour):
                 ApplyVerticalTile()
             else:
                 if verticalFace == VerticalFace.Left:
-                    ApplyVerticalTile(DescendingLeftFaces("Stone"))
+                    ApplyVerticalTile(DescendingLeftFaces(tilesetKey))
                 elif verticalFace == VerticalFace.Right:
-                    ApplyVerticalTile(DescendingRightFaces("Stone"))
+                    ApplyVerticalTile(DescendingRightFaces(tilesetKey))
                 elif verticalFace == VerticalFace.None:
-                    ApplyVerticalTile(DescendingNoneFaces("Stone"))
+                    ApplyVerticalTile(DescendingNoneFaces(tilesetKey))
                 else:
                     verticalFace = VerticalFace.Double
-                    ApplyVerticalTile(DescendingDoubleVerticalFaces("Stone"))
+                    ApplyVerticalTile(DescendingDoubleVerticalFaces(tilesetKey))
         except e as Generic.KeyNotFoundException:
             return
 
@@ -1134,14 +1131,14 @@ class Autotile (MonoBehaviour):
         try:
             tileMode = TileMode.Centric
             UseCentricConnections()
-            ApplyTile(AutotileConfig.config.sets["Stone"].corners.aaaa)
+            ApplyTile(AutotileConfig.config.sets[tilesetKey].corners.aaaa)
         except e as Generic.KeyNotFoundException:
             return
 
     def ApplyNone():
         try:
             tileMode = secondaryTileMode = TileMode.None
-            ApplyTile(AutotileConfig.config.sets["Stone"].corners.bbbb)
+            ApplyTile(AutotileConfig.config.sets[tilesetKey].corners.bbbb)
         except e as Generic.KeyNotFoundException:
             return
 
@@ -1227,7 +1224,13 @@ class Autotile (MonoBehaviour):
             applied_offset = offset
             dirty = true
 
+    def ApplyTilesetKey():
+        if applied_tileset_key != tilesetKey:
+            applied_tileset_key = tilesetKey
+            dirty = true
+
     def Refresh():
+        ApplyTilesetKey()
         ApplyOffset()
         ApplyFace()
         ApplyScale()
