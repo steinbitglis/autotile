@@ -7,12 +7,37 @@ enum TileDirection:
     Horizontal
     Vertical
 
+enum TileFlipDirection:
+    Horizontal
+    Vertical
+    Both
+
+enum TileRotation:
+    CW
+    CCW
+    _180
+
 class Tile:
     [System.NonSerialized]
     public show = false
     public atlasLocation = Rect()
-    public direction = TileDirection.Horizontal
     public flipped = false
+    public direction = TileFlipDirection.Horizontal
+    public rotated = false
+    public rotation = TileRotation.CW
+
+    def Duplicate() as Tile:
+        result = Tile()
+        result.atlasLocation = Rect(
+            atlasLocation.x,
+            atlasLocation.y,
+            atlasLocation.width,
+            atlasLocation.height)
+        result.flipped = flipped
+        result.direction = direction
+        result.rotated = rotated
+        result.rotation = rotation
+        return result
 
 class AutotileCenterSet:
     [System.NonSerialized]
@@ -25,6 +50,16 @@ class AutotileCenterSet:
     public upFace = Tile()
     public doubleHorizontalFace = Tile()
     public doubleVerticalFace = Tile()
+
+    def Duplicate() as AutotileCenterSet:
+        result = AutotileCenterSet()
+        result.leftFace = leftFace.Duplicate()
+        result.rightFace = rightFace.Duplicate()
+        result.downFace = downFace.Duplicate()
+        result.upFace = upFace.Duplicate()
+        result.doubleHorizontalFace = doubleHorizontalFace.Duplicate()
+        result.doubleVerticalFace = doubleVerticalFace.Duplicate()
+        return result
 
 class AutotileCorners (IEnumerable[Tile]):
     //
@@ -187,6 +222,26 @@ class AutotileCorners (IEnumerable[Tile]):
     def IEnumerable.GetEnumerator() as IEnumerator:
         return myGetEnumerator()
 
+    def Duplicate() as AutotileCorners:
+        result = AutotileCorners()
+        result.aaaa = aaaa.Duplicate(); result.aaad = aaad.Duplicate(); result.aada = aada.Duplicate()
+        result.aadd = aadd.Duplicate(); result.aarg = aarg.Duplicate(); result.adaa = adaa.Duplicate()
+        result.adad = adad.Duplicate(); result.adda = adda.Duplicate(); result.addd = addd.Duplicate()
+        result.adrg = adrg.Duplicate(); result.agbg = agbg.Duplicate(); result.agla = agla.Duplicate()
+        result.agld = agld.Duplicate(); result.bbbb = bbbb.Duplicate(); result.bblc = bblc.Duplicate()
+        result.bcac = bcac.Duplicate(); result.bcdc = bcdc.Duplicate(); result.bcrb = bcrb.Duplicate()
+        result.daaa = daaa.Duplicate(); result.daad = daad.Duplicate(); result.dada = dada.Duplicate()
+        result.dadd = dadd.Duplicate(); result.darg = darg.Duplicate(); result.ddaa = ddaa.Duplicate()
+        result.ddad = ddad.Duplicate(); result.ddda = ddda.Duplicate(); result.dddd = dddd.Duplicate()
+        result.ddrg = ddrg.Duplicate(); result.dgbg = dgbg.Duplicate(); result.dgla = dgla.Duplicate()
+        result.dgld = dgld.Duplicate(); result.lbbg = lbbg.Duplicate(); result.lbla = lbla.Duplicate()
+        result.lbld = lbld.Duplicate(); result.lcaa = lcaa.Duplicate(); result.lcad = lcad.Duplicate()
+        result.lcda = lcda.Duplicate(); result.lcdd = lcdd.Duplicate(); result.lcrg = lcrg.Duplicate()
+        result.raac = raac.Duplicate(); result.radc = radc.Duplicate(); result.rarb = rarb.Duplicate()
+        result.rdac = rdac.Duplicate(); result.rddc = rddc.Duplicate(); result.rdrb = rdrb.Duplicate()
+        result.rgbb = rgbb.Duplicate(); result.rglc = rglc.Duplicate()
+        return result
+
 class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenterSet]]):
     [SerializeField]
     private keys = List of int()
@@ -249,9 +304,17 @@ class AutotileSet:
     public newCandidate = 2
 
     [System.NonSerialized]
-    public showSettings = true
+    public showDuplicateOption = false
+    [System.NonSerialized]
+    public duplicateCandidate = ""
+
+    [System.NonSerialized]
+    public showSettings = false
     public tileSize = 128
     public material as Material
+
+    [System.NonSerialized]
+    public preview as Texture2D
 
     [System.NonSerialized]
     public showRemoveOption = false
@@ -265,6 +328,18 @@ class AutotileSet:
     [System.NonSerialized]
     public showCorners = false
     public corners = AutotileCorners()
+
+    def Duplicate() as AutotileSet:
+        result = AutotileSet()
+        result.material = material
+        result.tileSize = tileSize
+        for csEntry in centerSets:
+            cSet = csEntry.Value
+            cSetKey = csEntry.Key
+            dup = cSet.Duplicate()
+            result.centerSets[cSetKey] = dup
+        result.corners = corners.Duplicate()
+        return result
 
 class AutotileSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileSet]]):
     [SerializeField]
@@ -307,6 +382,9 @@ class AutotileSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileSet]])
     public Count as int:
         get:
             return self.backingDictionary.Count
+
+    public def ContainsKey(index as string) as bool:
+        return self.backingDictionary.ContainsKey(index)
 
     public myGetEnumerator = GetEnumerator
     public def GetEnumerator() as Generic.IEnumerator[of KeyValuePair[of string, AutotileSet]]:

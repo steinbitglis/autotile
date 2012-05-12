@@ -77,15 +77,19 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
         if initMetaAndTexture:
             newMeta = TilesetMeta()
-            aspect = mt.width / mt.height
-            nextTexture = Texture2D(mt.width, mt.height, TextureFormat.ARGB32, false)
-            nextTexture.SetPixels(mt.GetPixels())
-            nextTexture.Apply()
-            TextureScale.Bilinear(nextTexture,
-                    Mathf.Min(mt.width,  256.0f * aspect),
-                    Mathf.Min(mt.height, 256.0f),
-                    self)
-            newMeta.preview = nextTexture
+            if s.preview:
+                newMeta.preview = s.preview
+            else:
+                aspect = mt.width / mt.height
+                nextTexture = Texture2D(mt.width, mt.height, TextureFormat.ARGB32, false)
+                nextTexture.SetPixels(mt.GetPixels())
+                nextTexture.Apply()
+                TextureScale.Bilinear(nextTexture,
+                        Mathf.Min(mt.width,  256.0f * aspect),
+                        Mathf.Min(mt.height, 256.0f),
+                        self)
+                newMeta.preview = nextTexture
+                s.preview = nextTexture
             if s in tilesetMeta:
                 Object.DestroyImmediate(tilesetMeta[s].preview)
             tilesetMeta[s] = newMeta
@@ -97,14 +101,14 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
     [MenuItem("Assets/Autotile/Create Autotile Config")]
     static def CreateConfig() as AutotileConfig:
-        tc = AssetDatabase.LoadAssetAtPath("Assets/Resources/Editor/AutotileConfig.asset", AutotileConfig)
+        tc = AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Tilesets.asset", AutotileConfig)
         unless tc:
-            unless Directory.Exists("Assets/Resources"):
-                AssetDatabase.CreateFolder("Assets", "Resources")
-            unless Directory.Exists("Assets/Resources/Editor"):
-                AssetDatabase.CreateFolder("Assets/Resources", "Editor")
+            unless Directory.Exists("Assets/Plugins"):
+                AssetDatabase.CreateFolder("Assets", "Plugins")
+            unless Directory.Exists("Assets/Plugins/Autotile"):
+                AssetDatabase.CreateFolder("Assets/Plugins", "Autotile")
             tc = ScriptableObject.CreateInstance(AutotileConfig)
-            AssetDatabase.CreateAsset(tc, "Assets/Resources/Editor/AutotileConfig.asset")
+            AssetDatabase.CreateAsset(tc, "Assets/Plugins/Autotile/Tilesets.asset")
         return tc
 
      def drawTileGUIContent(s as AutotileSet, t as Tile, n as string, prefix as string, c as GUIContent):
@@ -151,7 +155,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             if t.atlasLocation != newAtlasLocation:
                 Undo.RegisterUndo(config, "Set Tile Location in $(prefix)$n")
                 t.atlasLocation = newAtlasLocation
-            newFlipped = EditorGUILayout.Toggle("Flipped", t.flipped)
+            newFlipped = EditorGUILayout.Toggle("Source Flipped", t.flipped)
             if t.flipped != newFlipped:
                 Undo.RegisterUndo(config, "Set Flipped in $(prefix)$n")
                 t.flipped = newFlipped
@@ -160,6 +164,24 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 if t.direction cast System.Enum != newDirection:
                     Undo.RegisterUndo(config, "Set Direction in $(prefix)$n")
                     t.direction = newDirection
+            newRotated = EditorGUILayout.Toggle("Source Rotated", t.rotated)
+            if t.rotated != newRotated:
+                Undo.RegisterUndo(config, "Set Rotated in $(prefix)$n")
+                unless t.rotation == TileRotation._180:
+                    buf = t.atlasLocation.width
+                    t.atlasLocation.width = t.atlasLocation.height
+                    t.atlasLocation.height = buf
+                t.rotated = newRotated
+            if t.rotated:
+                newRotation = EditorGUILayout.EnumPopup("Rotation", t.rotation)
+                if t.rotation cast System.Enum != newRotation:
+                    Undo.RegisterUndo(config, "Set Rotation in $(prefix)$n")
+                    if newRotation == TileRotation._180 cast System.Enum or\
+                       t.rotation == TileRotation._180:
+                        buf = t.atlasLocation.width
+                        t.atlasLocation.width = t.atlasLocation.height
+                        t.atlasLocation.height = buf
+                    t.rotation = newRotation
             EditorGUI.indentLevel -= 1
 
             # Repaint() if newPreview
@@ -193,6 +215,13 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         if newSetName and acceptNewSet and newSetMaterial:
             Undo.RegisterUndo(config, "Add Autotile Set $newSetName")
 
+            path = AssetDatabase.GetAssetPath(newSetMaterial.mainTexture)
+            textureImporter = AssetImporter.GetAtPath(path) as TextureImporter
+            textureImporter.mipmapEnabled = false
+            textureImporter.isReadable = true
+            textureImporter.filterMode = FilterMode.Point
+            AssetDatabase.ImportAsset(path)
+
             newSet = AutotileSet()
             newSet.material = newSetMaterial
             newSet.tileSize = newSetTileSize
@@ -206,11 +235,11 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             for face in h_props:
                 face.atlasLocation.width = 1.0f / newTilesWide
                 face.atlasLocation.height = 1.0f / newTilesHigh
-                face.direction = TileDirection.Vertical
+                face.direction = TileFlipDirection.Vertical
             for face in v_props:
                 face.atlasLocation.width = 1.0f / newTilesWide
                 face.atlasLocation.height = 1.0f / newTilesHigh
-                face.direction = TileDirection.Horizontal
+                face.direction = TileFlipDirection.Horizontal
             newSet.centerSets[1] = newCenterSet
 
             for t in newSet.corners:
@@ -228,6 +257,8 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             EditorUtility.SetDirty(config)
 
         tileSetTrash = []
+        newSets = []
+        newNames = []
 
         for setEntry in config.sets:
             autotileSet = setEntry.Value
@@ -243,6 +274,30 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
                 f = def(v as bool):
                     return not closeAllTiles and (openAllTiles or v)
+
+                autotileSet.showDuplicateOption = EditorGUILayout.Foldout(autotileSet.showDuplicateOption, "Duplicate")
+                if autotileSet.showDuplicateOption:
+                    EditorGUI.indentLevel += 1
+
+                    autotileSet.duplicateCandidate = EditorGUILayout.TextField("Duplicate Name", autotileSet.duplicateCandidate)
+
+                    GUI.enabled = autotileSet.duplicateCandidate != "" and\
+                                  not config.sets.ContainsKey(autotileSet.duplicateCandidate)
+
+                    myRect = GUILayoutUtility.GetRect(0f, 16f)
+                    myRect.x += 24
+                    myRect.width -= 24
+                    if GUI.Button(myRect, "Duplicate $autotileSetName as $(autotileSet.duplicateCandidate)"):
+                        Undo.RegisterUndo(config, "Duplicate $autotileSetName")
+                        newSet = autotileSet.Duplicate()
+                        newSets.Add(newSet)
+                        newNames.Add(autotileSet.duplicateCandidate)
+
+                        autotileSet.duplicateCandidate = ""
+                        GUIUtility.keyboardControl = 0
+
+                    GUI.enabled = true
+                    EditorGUI.indentLevel -= 1
 
                 autotileSet.showSettings = EditorGUILayout.Foldout(autotileSet.showSettings, "Settings")
                 if autotileSet.showSettings:
@@ -390,6 +445,12 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
         for s as string in tileSetTrash:
             config.sets.Remove(s)
+
+        for tileset, name in zip(newSets, newNames):
+            config.sets[name] = tileset
+            PopulateAtlasPreview(tileset)
+            EditorUtility.ClearProgressBar()
+            EditorUtility.SetDirty(config)
 
         if GUI.changed:
             EditorUtility.SetDirty(config)

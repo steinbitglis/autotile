@@ -678,30 +678,47 @@ class Autotile (MonoBehaviour):
         #     Debug.Log("tile not 1.0f ($(xMin)-$(xMax), $(yMin)-$(yMax))")
         #     Debug.Log("$(t.direction) $(t.flipped)")
         if t.flipped:
-            if t.direction == TileDirection.Horizontal:
-                return (
+            if t.direction == TileFlipDirection.Horizontal:
+                result = (
                     Vector2(xMax, yMin),
                     Vector2(xMax, yMax),
                     Vector2(xMin, yMax),
                     Vector2(xMin, yMax),
                     Vector2(xMin, yMin),
                     Vector2(xMax, yMin),)
-            else: # elif t.direction == TileDirection.Vertical:
-                return (
+            elif t.direction == TileFlipDirection.Vertical:
+                result = (
                     Vector2(xMin, yMax),
                     Vector2(xMin, yMin),
                     Vector2(xMax, yMin),
                     Vector2(xMax, yMin),
                     Vector2(xMax, yMax),
                     Vector2(xMin, yMax),)
+            else: # Both
+                result = (
+                    Vector2(xMax, yMax),
+                    Vector2(xMax, yMin),
+                    Vector2(xMin, yMin),
+                    Vector2(xMin, yMin),
+                    Vector2(xMin, yMax),
+                    Vector2(xMax, yMax),)
         else:
-            return (
+            result = (
                 Vector2(xMin, yMin),
                 Vector2(xMin, yMax),
                 Vector2(xMax, yMax),
                 Vector2(xMax, yMax),
                 Vector2(xMax, yMin),
                 Vector2(xMin, yMin),)
+        if t.rotated:
+            if t.rotation == TileRotation.CW:
+                return (result[1], result[2], result[4], result[4], result[5], result[1])
+            elif t.rotation == TileRotation.CCW:
+                return (result[4], result[5], result[1], result[1], result[2], result[4])
+            else:
+                return (result[3], result[4], result[5], result[0], result[1], result[2])
+        else:
+            return result
 
     def ApplyHorizontalTile():
         air_info = getAirInfo()
@@ -1107,6 +1124,8 @@ class Autotile (MonoBehaviour):
                     ApplyHorizontalTile(DescendingDoubleHorizontalFaces(tilesetKey))
         except e as Generic.KeyNotFoundException:
             return
+        except e as System.ArgumentNullException:
+            return
 
     def ApplyVertical(dim as int):
         try:
@@ -1126,6 +1145,8 @@ class Autotile (MonoBehaviour):
                     ApplyVerticalTile(DescendingDoubleVerticalFaces(tilesetKey))
         except e as Generic.KeyNotFoundException:
             return
+        except e as System.ArgumentNullException:
+            return
 
     def ApplyCentric():
         try:
@@ -1134,12 +1155,16 @@ class Autotile (MonoBehaviour):
             ApplyTile(AutotileConfig.config.sets[tilesetKey].corners.aaaa)
         except e as Generic.KeyNotFoundException:
             return
+        except e as System.ArgumentNullException:
+            return
 
     def ApplyNone():
         try:
             tileMode = secondaryTileMode = TileMode.None
             ApplyTile(AutotileConfig.config.sets[tilesetKey].corners.bbbb)
         except e as Generic.KeyNotFoundException:
+            return
+        except e as System.ArgumentNullException:
             return
 
     def ApplyScale():

@@ -13,7 +13,9 @@ class AutotileEditor (Editor):
     verticalFaceProp   as SerializedProperty
     tileModeProp       as SerializedProperty
 
-    def Awake():
+    private prev_pivot_mode as PivotMode
+
+    def OnEnable():
         tile = target as Autotile
 
         squeezeModeProp    = serializedObject.FindProperty("squeezeMode")
@@ -22,6 +24,19 @@ class AutotileEditor (Editor):
         tileModeProp       = serializedObject.FindProperty("tileMode")
 
         localTransform = tile.transform
+
+        prev_pivot_mode = Tools.pivotMode
+        Tools.pivotMode = PivotMode.Pivot
+
+        p = EndSnapshot as EditorApplication.CallbackFunction
+        unless p in EditorApplication.modifierKeysChanged.GetInvocationList():
+            EditorApplication.modifierKeysChanged = System.Delegate.Combine(EditorApplication.modifierKeysChanged, p)
+
+    def OnDisable():
+        Tools.pivotMode = prev_pivot_mode
+
+        p = EndSnapshot as EditorApplication.CallbackFunction
+        EditorApplication.modifierKeysChanged = System.Delegate.RemoveAll(EditorApplication.modifierKeysChanged, p)
 
     virtual def OnInspectorGUI():
         serializedObject.Update()
@@ -93,11 +108,35 @@ class AutotileEditor (Editor):
         return (Vector2(-0.5f + margin_w, -0.5f + margin_h), Vector2(-0.5f + margin_w,  0.5f - margin_h),
                 Vector2( 0.5f - margin_w,  0.5f - margin_h), Vector2( 0.5f - margin_w, -0.5f + margin_h),)
 
+    private resizing_tiles = false
+    def StartSnapshot():
+        unless resizing_tiles:
+            Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotiles")
+            Undo.CreateSnapshot()
+            resizing_tiles = true
+
+    def EndSnapshot():
+        if resizing_tiles:
+            Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotiles")
+            Undo.RegisterSnapshot()
+            Undo.ClearSnapshotTarget()
+            resizing_tiles = false
+
     def OnSceneGUI():
         if Event.current.type == EventType.Repaint:
-            tile.Refresh()
+            for t in FindObjectsOfType(Autotile):
+                t.Refresh()
             DrawAutotileConnections()
-        elif Event.current.type == EventType.ScrollWheel:
+        elif Event.current.type == EventType.KeyDown:
+            if Event.current.keyCode == KeyCode.LeftControl or\
+               Event.current.keyCode == KeyCode.RightControl:
+                StartSnapshot()
+        elif Event.current.type == EventType.KeyUp:
+            if Event.current.keyCode == KeyCode.LeftControl or\
+               Event.current.keyCode == KeyCode.RightControl:
+                EndSnapshot()
+        elif Event.current.type == EventType.ScrollWheel and Event.current.control:
+            StartSnapshot()
             tile.Refresh()
             ccam = Camera.current
             mouseRay = ccam.ScreenPointToRay(Vector3(Event.current.mousePosition.x, ccam.pixelHeight - Event.current.mousePosition.y, 0.0f))
@@ -124,6 +163,7 @@ class AutotileEditor (Editor):
                         changed = true
                     if changed:
                         one_tile.PushNeighbours()
+                        EditorUtility.SetDirty(one_tile)
 
                     Event.current.Use()
                     break
