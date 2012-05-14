@@ -19,6 +19,8 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
     showNewSet = false
     initialized = false
 
+    inError as bool
+
     tilesetMeta as Dictionary[of AutotileSet, TilesetMeta]
     highlightTexture as Texture2D
 
@@ -73,6 +75,8 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         PopulateAtlasPreview(s, true)
 
     def PopulateAtlasPreview(s as AutotileSet, initMetaAndTexture as bool):
+        unless s.material:
+            return
         mt = s.material.mainTexture as Texture2D
 
         if initMetaAndTexture:
@@ -113,7 +117,8 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
      def drawTileGUIContent(s as AutotileSet, t as Tile, n as string, prefix as string, c as GUIContent):
         t.show = EditorGUILayout.Foldout(t.show, c)
-        if t.show:
+        nextMeta as TilesetMeta
+        if t.show and tilesetMeta.TryGetValue(s, nextMeta) and s.material:
             EditorGUI.indentLevel += 1
 
             mt = s.material.mainTexture as Texture2D
@@ -125,11 +130,6 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             width = height * aspect
             myRect = GUILayoutUtility.GetRect(width, height, GUILayout.MaxWidth(width), GUILayout.MaxHeight(height))
             myRect.x += indent
-
-            nextMeta as TilesetMeta
-            unless tilesetMeta.TryGetValue(s, nextMeta):
-                Debug.LogError("Failed to get preview for $n")
-                return
 
             if Event.current.type == EventType.MouseDown and Event.current.button == 0:
                 if myRect.Contains(Event.current.mousePosition):
@@ -184,7 +184,9 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                     t.rotation = newRotation
             EditorGUI.indentLevel -= 1
 
-            # Repaint() if newPreview
+        else:
+            Debug.LogError("Failed to get material for $(s.name)") unless inError
+            inError = true
 
     def drawTileGUINamed(s as AutotileSet, t as Tile, n as string, prefix as string):
         drawTileGUIContent(s, t, n, prefix, GUIContent("$n"))
@@ -263,7 +265,12 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         for setEntry in config.sets:
             autotileSet = setEntry.Value
             autotileSetName = setEntry.Key
-            meta = tilesetMeta[autotileSet]
+            autotileSet.name = autotileSetName
+            meta as TilesetMeta
+            unless tilesetMeta.TryGetValue(autotileSet, meta):
+                Debug.LogError("Failed to get material for $(autotileSetName)") unless inError
+                inError = true
+
             openAllTiles = false
             closeAllTiles = false
 
@@ -343,7 +350,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         GUI.enabled = true
                         EditorGUI.indentLevel -= 1
 
-                    if autotileSet.newCandidate > 0 and acceptNew:
+                    if autotileSet.newCandidate > 0 and acceptNew and meta:
                         Undo.RegisterUndo(config, "Add New Center Set $(autotileSet.newCandidate)")
 
                         newCenterSet = AutotileCenterSet()

@@ -298,6 +298,8 @@ class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenter
 [System.Serializable]
 class AutotileSet:
     [System.NonSerialized]
+    public name = ""
+    [System.NonSerialized]
     public show = false
 
     [System.NonSerialized]
