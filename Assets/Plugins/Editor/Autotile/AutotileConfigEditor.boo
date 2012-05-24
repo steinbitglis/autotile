@@ -85,13 +85,12 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 newMeta.preview = s.preview
             else:
                 aspect = mt.width / mt.height
-                nextTexture = Texture2D(mt.width, mt.height, TextureFormat.ARGB32, false)
-                nextTexture.SetPixels(mt.GetPixels())
-                nextTexture.Apply()
-                TextureScale.Bilinear(nextTexture,
-                        Mathf.Min(mt.width,  256.0f * aspect),
-                        Mathf.Min(mt.height, 256.0f),
-                        self)
+                nextTexture = Texture2D(
+                    Mathf.Min(mt.width,  256.0f * aspect),
+                    Mathf.Min(mt.height, 256.0f),
+                    TextureFormat.ARGB32,
+                    false)
+                TextureScale.Bilinear(mt, nextTexture, self)
                 newMeta.preview = nextTexture
                 s.preview = nextTexture
             if s in tilesetMeta:
@@ -118,75 +117,76 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
      def drawTileGUIContent(s as AutotileSet, t as Tile, n as string, prefix as string, c as GUIContent):
         t.show = EditorGUILayout.Foldout(t.show, c)
         nextMeta as TilesetMeta
-        if t.show and tilesetMeta.TryGetValue(s, nextMeta) and s.material:
-            EditorGUI.indentLevel += 1
+        if t.show:
+            if tilesetMeta.TryGetValue(s, nextMeta) and s.material:
+                EditorGUI.indentLevel += 1
 
-            mt = s.material.mainTexture as Texture2D
+                mt = s.material.mainTexture as Texture2D
 
-            aspect = mt.width / mt.height
-            indent = 8 + EditorGUI.indentLevel * 8
-            width = Screen.width - indent - 16
-            height = Mathf.Min(width / aspect, 256.0f)
-            width = height * aspect
-            myRect = GUILayoutUtility.GetRect(width, height, GUILayout.MaxWidth(width), GUILayout.MaxHeight(height))
-            myRect.x += indent
+                aspect = mt.width / mt.height
+                indent = 8 + EditorGUI.indentLevel * 8
+                width = Screen.width - indent - 16
+                height = Mathf.Min(width / aspect, 256.0f)
+                width = height * aspect
+                myRect = GUILayoutUtility.GetRect(width, height, GUILayout.MaxWidth(width), GUILayout.MaxHeight(height))
+                myRect.x += indent
 
-            if Event.current.type == EventType.MouseDown and Event.current.button == 0:
-                if myRect.Contains(Event.current.mousePosition):
-                    x = (Event.current.mousePosition.x - myRect.xMin) / myRect.width
-                    y = 1.0f - (Event.current.mousePosition.y - myRect.yMin) / myRect.height
-                    x = Mathf.Min(1.0f - t.atlasLocation.width, Mathf.Floor(x * nextMeta.tilesWide) / nextMeta.tilesWide)
-                    y = Mathf.Min(1.0f - t.atlasLocation.height, Mathf.Floor(y * nextMeta.tilesHigh) / nextMeta.tilesHigh)
+                if Event.current.type == EventType.MouseDown and Event.current.button == 0:
+                    if myRect.Contains(Event.current.mousePosition):
+                        x = (Event.current.mousePosition.x - myRect.xMin) / myRect.width
+                        y = 1.0f - (Event.current.mousePosition.y - myRect.yMin) / myRect.height
+                        x = Mathf.Min(1.0f - t.atlasLocation.width, Mathf.Floor(x * nextMeta.tilesWide) / nextMeta.tilesWide)
+                        y = Mathf.Min(1.0f - t.atlasLocation.height, Mathf.Floor(y * nextMeta.tilesHigh) / nextMeta.tilesHigh)
 
+                        Undo.RegisterUndo(config, "Set Tile Location in $(prefix)$n")
+                        t.atlasLocation.x = x
+                        t.atlasLocation.y = y
+
+                if Event.current.type == EventType.Repaint:
+                    GUI.DrawTexture(myRect, nextMeta.preview)
+                    highlightRect = Rect(
+                            myRect.x + t.atlasLocation.x * myRect.width,
+                            myRect.y + (1.0f - t.atlasLocation.bottom) * myRect.height,
+                            t.atlasLocation.width * myRect.width,
+                            t.atlasLocation.height * myRect.height)
+                    GUI.DrawTexture(highlightRect, highlightTexture)
+
+                newAtlasLocation = EditorGUILayout.RectField("Tile Location", t.atlasLocation)
+                if t.atlasLocation != newAtlasLocation:
                     Undo.RegisterUndo(config, "Set Tile Location in $(prefix)$n")
-                    t.atlasLocation.x = x
-                    t.atlasLocation.y = y
-
-            if Event.current.type == EventType.Repaint:
-                GUI.DrawTexture(myRect, nextMeta.preview)
-                highlightRect = Rect(
-                        myRect.x + t.atlasLocation.x * myRect.width,
-                        myRect.y + (1.0f - t.atlasLocation.bottom) * myRect.height,
-                        t.atlasLocation.width * myRect.width,
-                        t.atlasLocation.height * myRect.height)
-                GUI.DrawTexture(highlightRect, highlightTexture)
-
-            newAtlasLocation = EditorGUILayout.RectField("Tile Location", t.atlasLocation)
-            if t.atlasLocation != newAtlasLocation:
-                Undo.RegisterUndo(config, "Set Tile Location in $(prefix)$n")
-                t.atlasLocation = newAtlasLocation
-            newFlipped = EditorGUILayout.Toggle("Source Flipped", t.flipped)
-            if t.flipped != newFlipped:
-                Undo.RegisterUndo(config, "Set Flipped in $(prefix)$n")
-                t.flipped = newFlipped
-            if t.flipped:
-                newDirection = EditorGUILayout.EnumPopup("Direction", t.direction)
-                if t.direction cast System.Enum != newDirection:
-                    Undo.RegisterUndo(config, "Set Direction in $(prefix)$n")
-                    t.direction = newDirection
-            newRotated = EditorGUILayout.Toggle("Source Rotated", t.rotated)
-            if t.rotated != newRotated:
-                Undo.RegisterUndo(config, "Set Rotated in $(prefix)$n")
-                unless t.rotation == TileRotation._180:
-                    buf = t.atlasLocation.width
-                    t.atlasLocation.width = t.atlasLocation.height
-                    t.atlasLocation.height = buf
-                t.rotated = newRotated
-            if t.rotated:
-                newRotation = EditorGUILayout.EnumPopup("Rotation", t.rotation)
-                if t.rotation cast System.Enum != newRotation:
-                    Undo.RegisterUndo(config, "Set Rotation in $(prefix)$n")
-                    if newRotation == TileRotation._180 cast System.Enum or\
-                       t.rotation == TileRotation._180:
+                    t.atlasLocation = newAtlasLocation
+                newFlipped = EditorGUILayout.Toggle("Source Flipped", t.flipped)
+                if t.flipped != newFlipped:
+                    Undo.RegisterUndo(config, "Set Flipped in $(prefix)$n")
+                    t.flipped = newFlipped
+                if t.flipped:
+                    newDirection = EditorGUILayout.EnumPopup("Direction", t.direction)
+                    if t.direction cast System.Enum != newDirection:
+                        Undo.RegisterUndo(config, "Set Direction in $(prefix)$n")
+                        t.direction = newDirection
+                newRotated = EditorGUILayout.Toggle("Source Rotated", t.rotated)
+                if t.rotated != newRotated:
+                    Undo.RegisterUndo(config, "Set Rotated in $(prefix)$n")
+                    unless t.rotation == TileRotation._180:
                         buf = t.atlasLocation.width
                         t.atlasLocation.width = t.atlasLocation.height
                         t.atlasLocation.height = buf
-                    t.rotation = newRotation
-            EditorGUI.indentLevel -= 1
+                    t.rotated = newRotated
+                if t.rotated:
+                    newRotation = EditorGUILayout.EnumPopup("Rotation", t.rotation)
+                    if t.rotation cast System.Enum != newRotation:
+                        Undo.RegisterUndo(config, "Set Rotation in $(prefix)$n")
+                        if newRotation == TileRotation._180 cast System.Enum or\
+                           t.rotation == TileRotation._180:
+                            buf = t.atlasLocation.width
+                            t.atlasLocation.width = t.atlasLocation.height
+                            t.atlasLocation.height = buf
+                        t.rotation = newRotation
+                EditorGUI.indentLevel -= 1
 
-        else:
-            Debug.LogError("Failed to get material for $(s.name)") unless inError
-            inError = true
+            else:
+                Debug.LogError("Failed to get material for $(s.name)") unless inError
+                inError = true
 
     def drawTileGUINamed(s as AutotileSet, t as Tile, n as string, prefix as string):
         drawTileGUIContent(s, t, n, prefix, GUIContent("$n"))

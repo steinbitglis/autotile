@@ -115,24 +115,28 @@ macro binary_search_autotile_connection(index as Expression):
                         $(binary_search_autotile_connection.Body.Statements[11])
     |]
 
-macro hface_directions_cgx (faceDirection as ReferenceExpression):
+macro hface_directions_cgxn (faceDirection as ReferenceExpression):
     yield [|
         if $faceDirection == HorizontalFace.Down:
-            $(hface_directions_cgx.Body.Statements[0])
+            $(hface_directions_cgxn.Body.Statements[0])
         elif $faceDirection == HorizontalFace.Up:
-            $(hface_directions_cgx.Body.Statements[1])
+            $(hface_directions_cgxn.Body.Statements[1])
+        elif $faceDirection == HorizontalFace.Double:
+            $(hface_directions_cgxn.Body.Statements[2])
         else:
-            $(hface_directions_cgx.Body.Statements[2])
+            $(hface_directions_cgxn.Body.Statements[3])
     |]
 
-macro vface_directions_lrx (faceDirection as ReferenceExpression):
+macro vface_directions_lrxn (faceDirection as ReferenceExpression):
     yield [|
         if $faceDirection == VerticalFace.Left:
-            $(vface_directions_lrx.Body.Statements[0])
+            $(vface_directions_lrxn.Body.Statements[0])
         elif $faceDirection == VerticalFace.Right:
-            $(vface_directions_lrx.Body.Statements[1])
+            $(vface_directions_lrxn.Body.Statements[1])
+        elif $faceDirection == VerticalFace.Double:
+            $(vface_directions_lrxn.Body.Statements[2])
         else:
-            $(vface_directions_lrx.Body.Statements[2])
+            $(vface_directions_lrxn.Body.Statements[3])
     |]
 
 macro if_00_01_10_11 (msb as ReferenceExpression, lsb as ReferenceExpression):

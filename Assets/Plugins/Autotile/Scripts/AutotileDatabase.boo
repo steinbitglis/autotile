@@ -167,7 +167,7 @@ class AutotileCorners (IEnumerable[Tile]):
         get:
             fieldInfo = AutotileCorners.myType.GetField(index, BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             return fieldInfo.GetValue(self) as Tile if fieldInfo
-            return bbbb
+            raise KeyNotFoundException(index)
 
     private myGetEnumerator = GetEnumerator
     public def GetEnumerator() as Generic.IEnumerator[of Tile]:

@@ -26,6 +26,20 @@ static class MathOfPlanes:
         Vector2(-0.5f, -0.5f), Vector2(-0.5f,  0.5f),
         Vector2( 0.5f,  0.5f), Vector2( 0.5f, -0.5f))
 
+    def GetVertsFromBox(component as MonoBehaviour) as (Vector2):
+        box = component.GetComponent of BoxCollider()
+        if box:
+            half_h = box.size.y * 0.5f
+            half_w = box.size.x * 0.5f
+            x = box.center.x
+            y = box.center.y
+            return (Vector2(x - half_w, y - half_h),
+                    Vector2(x - half_w, y + half_h),
+                    Vector2(x + half_w, y + half_h),
+                    Vector2(x + half_w, y - half_h))
+        else:
+            return MathOfPlanes.StandardSquare
+
     def RectIntersectsRect(remote as (Vector2)) as bool:
         minLimitX = StandardSquare[0].x
         minLimitY = StandardSquare[0].y
