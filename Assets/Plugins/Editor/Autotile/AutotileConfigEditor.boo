@@ -63,7 +63,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         imagesBeingResized = config.sets.Count
         for i, setEntry as KeyValuePair[of string, AutotileSet] in enumerate(config.sets):
             imageBeingResized = i
-            PopulateAtlasPreview(setEntry.Value)
+            PopulateAtlasPreview(setEntry.Value, setEntry.Key)
         EditorUtility.ClearProgressBar()
 
     private imagesBeingResized as int
@@ -71,36 +71,49 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
     def Progress(s as single):
         EditorUtility.DisplayProgressBar("Creating atlas previews", "", (imageBeingResized + s) / imagesBeingResized)
 
-    def PopulateAtlasPreview(s as AutotileSet):
-        PopulateAtlasPreview(s, true)
+    def PopulateAtlasPreview(s as AutotileSet, name as string) as bool:
+        PopulateAtlasPreview(s, name, true)
 
-    def PopulateAtlasPreview(s as AutotileSet, initMetaAndTexture as bool):
-        unless s.material:
-            return
-        mt = s.material.mainTexture as Texture2D
+    private preview_failure = false
+    def PopulateAtlasPreview(s as AutotileSet, name, initMetaAndTexture as bool) as bool:
+        if not preview_failure:
 
-        if initMetaAndTexture:
-            newMeta = TilesetMeta()
-            if s.preview:
-                newMeta.preview = s.preview
-            else:
-                aspect = mt.width / mt.height
-                nextTexture = Texture2D(
-                    Mathf.Min(mt.width,  256.0f * aspect),
-                    Mathf.Min(mt.height, 256.0f),
-                    TextureFormat.ARGB32,
-                    false)
-                TextureScale.Bilinear(mt, nextTexture, self)
-                newMeta.preview = nextTexture
-                s.preview = nextTexture
-            if s in tilesetMeta:
-                Object.DestroyImmediate(tilesetMeta[s].preview)
-            tilesetMeta[s] = newMeta
-        else:
-            newMeta = tilesetMeta[s]
+            unless s.material:
+                preview_failure = true
+                Debug.LogError("$name did not have a readable texture to preview")
+                return false
 
-        newMeta.tilesWide = mt.width / s.tileSize
-        newMeta.tilesHigh = mt.height / s.tileSize
+            try:
+                mt = s.material.mainTexture as Texture2D
+
+                if initMetaAndTexture:
+                    newMeta = TilesetMeta()
+                    if s.preview:
+                        newMeta.preview = s.preview
+                    else:
+                        aspect = mt.width / mt.height
+                        nextTexture = Texture2D(
+                            Mathf.Min(mt.width,  256.0f * aspect),
+                            Mathf.Min(mt.height, 256.0f),
+                            TextureFormat.ARGB32,
+                            false)
+                        TextureScale.Bilinear(mt, nextTexture, self)
+                        newMeta.preview = nextTexture
+                        s.preview = nextTexture
+                    if s in tilesetMeta:
+                        Object.DestroyImmediate(tilesetMeta[s].preview)
+                    tilesetMeta[s] = newMeta
+                else:
+                    newMeta = tilesetMeta[s]
+
+                newMeta.tilesWide = mt.width / s.tileSize
+                newMeta.tilesHigh = mt.height / s.tileSize
+
+            except e as UnityException:
+                preview_failure = true
+                Debug.LogError("$name did not have a readable texture to preview")
+
+        return not preview_failure
 
     [MenuItem("Assets/Autotile/Create Autotile Config")]
     static def CreateConfig() as AutotileConfig:
@@ -248,7 +261,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 t.atlasLocation.width = 1.0f / newTilesWide
                 t.atlasLocation.height = 1.0f / newTilesHigh
 
-            PopulateAtlasPreview(newSet)
+            PopulateAtlasPreview(newSet, newSetName)
             EditorUtility.ClearProgressBar()
 
             config.sets[newSetName] = newSet
@@ -313,12 +326,12 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                     if changedTileSize != autotileSet.tileSize:
                         Undo.RegisterUndo(config, "Change $autotileSetName tile size")
                         autotileSet.tileSize = changedTileSize
-                        PopulateAtlasPreview(autotileSet, false)
+                        PopulateAtlasPreview(autotileSet, autotileSetName, false)
                     changedMaterial = EditorGUILayout.ObjectField("Material", autotileSet.material, Material, false)
                     if changedMaterial != autotileSet.material:
                         Undo.RegisterUndo(config, "Change $autotileSetName material")
                         autotileSet.material = changedMaterial
-                        PopulateAtlasPreview(autotileSet)
+                        PopulateAtlasPreview(autotileSet, autotileSetName)
                         EditorUtility.ClearProgressBar()
 
                     myRect = GUILayoutUtility.GetRect(0f, 16f)
@@ -455,7 +468,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
         for tileset, name in zip(newSets, newNames):
             config.sets[name] = tileset
-            PopulateAtlasPreview(tileset)
+            PopulateAtlasPreview(tileset, name)
             EditorUtility.ClearProgressBar()
             EditorUtility.SetDirty(config)
 

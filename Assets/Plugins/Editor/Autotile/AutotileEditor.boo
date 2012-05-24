@@ -102,6 +102,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     nextPreview.SetPixels(15, 15, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
+            except e as UnityException:
+                preview_failure = true
+                Debug.LogError("$(tile.gameObject.name) did not have a readable texture to preview")
             except e as Generic.KeyNotFoundException:
                 preview_failure = true
                 Debug.LogError("$(tile.gameObject.name) did not find tileset to preview")
