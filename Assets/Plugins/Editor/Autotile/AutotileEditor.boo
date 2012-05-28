@@ -39,7 +39,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         Tools.pivotMode = PivotMode.Pivot
 
         p = EndSnapshot as EditorApplication.CallbackFunction
-        unless p in EditorApplication.modifierKeysChanged.GetInvocationList():
+        unless EditorApplication.modifierKeysChanged and p in EditorApplication.modifierKeysChanged.GetInvocationList():
             EditorApplication.modifierKeysChanged = System.Delegate.Combine(EditorApplication.modifierKeysChanged, p)
 
     def OnDisable():
@@ -253,32 +253,52 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 Vector2( 0.5f - margin_w,  0.5f - margin_h), Vector2( 0.5f - margin_w, -0.5f + margin_h),)
 
     private resizing_tiles = false
+    private control_and_handle_resizing = false
+    def SnapshotImmediately():
+        if resizing_tiles:
+            control_and_handle_resizing = true
+        else:
+            affected_transforms = array(Component, [t.transform for t in FindObjectsOfType(Autotile)])
+            affected_tiles = array(Component, FindObjectsOfType(Autotile))
+            affected = affected_transforms + affected_tiles
+            Undo.SetSnapshotTarget(affected, "Resize/Move Autotiles")
+
+            Undo.CreateSnapshot()
+            Undo.RegisterSnapshot()
+            Undo.ClearSnapshotTarget()
+
     def StartSnapshot():
         unless resizing_tiles:
-            Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotiles")
+            Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotile Length")
             Undo.CreateSnapshot()
             resizing_tiles = true
 
     def EndSnapshot():
         if resizing_tiles:
-            Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotiles")
-            Undo.RegisterSnapshot()
-            Undo.ClearSnapshotTarget()
+            unless control_and_handle_resizing:
+                Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotile Length")
+                Undo.RegisterSnapshot()
+                Undo.ClearSnapshotTarget()
             resizing_tiles = false
+        control_and_handle_resizing = false
 
     def OnSceneGUI():
+
         if Event.current.type == EventType.Repaint:
             for t in FindObjectsOfType(Autotile):
                 t.Refresh()
             DrawAutotileConnections()
+
         elif Event.current.type == EventType.KeyDown:
             if Event.current.keyCode == KeyCode.LeftControl or\
                Event.current.keyCode == KeyCode.RightControl:
                 StartSnapshot()
+
         elif Event.current.type == EventType.KeyUp:
             if Event.current.keyCode == KeyCode.LeftControl or\
                Event.current.keyCode == KeyCode.RightControl:
                 EndSnapshot()
+
         elif Event.current.type == EventType.ScrollWheel and Event.current.control:
             StartSnapshot()
             tile.Refresh()
@@ -311,6 +331,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
                     Event.current.Use()
                     break
+
         elif Event.current.type == EventType.MouseUp and Event.current.button == 0:
             tile.transform.localRotation = Quaternion.identity
             tile.transform.localPosition.z = 0.0f
@@ -330,6 +351,25 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 t_vertices2 = System.Array.ConvertAll[of Vector3, Vector2](t_vertices3, {v as Vector3| return v})
 
                 intersects.Add(other_tile) if MathOfPlanes.RectIntersectsRect(local_collision_quad, t_vertices2)
-            tile.ConnectToTiles(intersects)
 
+            affected = Generic.List of Autotile(intersects)
+            for n in tile.connections:
+                affected.Add(n) unless not n or n in affected
+
+            affected_tiles = (tile as Component,) + array(Component, affected)
+            affected_transforms = array(Component, affected.Count + 1)
+            affected_transforms[affected.Count] = tile.transform
+            for i, affected_tile as Autotile in enumerate(affected_tiles):
+                affected_transforms[i] = affected_tile.transform
+            affected_array = affected_tiles + affected_transforms
+
+            tile.ConnectToTiles(intersects)
             tile.PushNeighbours()
+
+            for affected_tile in affected_tiles:
+                EditorUtility.SetDirty(affected_tile)
+            for affected_transform in affected_transforms:
+                EditorUtility.SetDirty(affected_transform)
+
+        elif Event.current.type == EventType.MouseDown and Event.current.button == 0:
+            SnapshotImmediately()
