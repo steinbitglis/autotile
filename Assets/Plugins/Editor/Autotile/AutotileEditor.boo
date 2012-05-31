@@ -282,6 +282,11 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             resizing_tiles = false
         control_and_handle_resizing = false
 
+    def NormalizeScales():
+        tile.transform.localRotation = Quaternion.identity
+        tile.transform.localPosition.z = 0.0f
+        tile.transform.localScale = tile.SuggestScales()
+
     def OnSceneGUI():
 
         if Event.current.type == EventType.Repaint:
@@ -333,9 +338,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     break
 
         elif Event.current.type == EventType.MouseUp and Event.current.button == 0:
-            tile.transform.localRotation = Quaternion.identity
-            tile.transform.localPosition.z = 0.0f
-            tile.transform.localScale = tile.SuggestScales()
+            NormalizeScales()
             tile.Refresh()
 
             local_collision_quad = tile.OffsetVertices2(MarginQuad(0.0f, localTransform))
@@ -361,7 +364,6 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             affected_transforms[affected.Count] = tile.transform
             for i, affected_tile as Autotile in enumerate(affected_tiles):
                 affected_transforms[i] = affected_tile.transform
-            affected_array = affected_tiles + affected_transforms
 
             tile.ConnectToTiles(intersects)
             tile.PushNeighbours()

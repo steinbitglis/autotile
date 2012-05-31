@@ -115,18 +115,6 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
         return not preview_failure
 
-    [MenuItem("Assets/Autotile/Create Autotile Config")]
-    static def CreateConfig() as AutotileConfig:
-        tc = AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Tilesets.asset", AutotileConfig)
-        unless tc:
-            unless Directory.Exists("Assets/Plugins"):
-                AssetDatabase.CreateFolder("Assets", "Plugins")
-            unless Directory.Exists("Assets/Plugins/Autotile"):
-                AssetDatabase.CreateFolder("Assets/Plugins", "Autotile")
-            tc = ScriptableObject.CreateInstance(AutotileConfig)
-            AssetDatabase.CreateAsset(tc, "Assets/Plugins/Autotile/Tilesets.asset")
-        return tc
-
      def drawTileGUIContent(s as AutotileSet, t as Tile, n as string, prefix as string, c as GUIContent):
         t.show = EditorGUILayout.Foldout(t.show, c)
         nextMeta as TilesetMeta
@@ -159,7 +147,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                     GUI.DrawTexture(myRect, nextMeta.preview)
                     highlightRect = Rect(
                             myRect.x + t.atlasLocation.x * myRect.width,
-                            myRect.y + (1.0f - t.atlasLocation.bottom) * myRect.height,
+                            myRect.y + (1.0f - t.atlasLocation.yMax) * myRect.height,
                             t.atlasLocation.width * myRect.width,
                             t.atlasLocation.height * myRect.height)
                     GUI.DrawTexture(highlightRect, highlightTexture)

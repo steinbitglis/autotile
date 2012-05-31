@@ -1166,6 +1166,24 @@ class Autotile (MonoBehaviour):
             return "l"
             return "a"
 
+    def getCentricCorner() as Tile:
+        return getCentricCorner(getAirInfo())
+
+    def getCentricCorner(air_info as AirInfo) as Tile:
+        w = getVerticalConnectionClassification(  connections.up,    air_info.left, air_info.right)
+        x = getHorizontalConnectionClassification(connections.right, air_info.up,   air_info.down)
+        y = getVerticalConnectionClassification(  connections.down,  air_info.left, air_info.right)
+        z = getHorizontalConnectionClassification(connections.left,  air_info.up,   air_info.down)
+
+        try:
+            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+        except e as Generic.KeyNotFoundException:
+            w = getVerticalConnectionClassification(  null, air_info.left, air_info.right)
+            x = getHorizontalConnectionClassification(null, air_info.up,   air_info.down)
+            y = getVerticalConnectionClassification(  null, air_info.left, air_info.right)
+            z = getHorizontalConnectionClassification(null, air_info.up,   air_info.down)
+            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+
     def getRightCorner() as Tile:
         return getRightCorner(getAirInfo())
 
@@ -1296,7 +1314,7 @@ class Autotile (MonoBehaviour):
         try:
             tileMode = TileMode.Centric
             UseCentricConnections()
-            ApplyTile(AutotileConfig.config.sets[tilesetKey].corners.aaaa)
+            ApplyTile(getCentricCorner())
         except e as Generic.KeyNotFoundException:
             return
         except e as System.ArgumentNullException:

@@ -385,6 +385,12 @@ class AutotileSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileSet]])
         get:
             return self.backingDictionary.Count
 
+    public def First() as AutotileSet:
+        return values[0]
+
+    public def FirstKey() as string:
+        return keys[0]
+
     public def ContainsKey(index as string) as bool:
         return self.backingDictionary.ContainsKey(index)
 
