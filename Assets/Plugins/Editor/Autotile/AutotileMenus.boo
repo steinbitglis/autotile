@@ -16,7 +16,7 @@ static class AutotileMenus:
             AssetDatabase.CreateAsset(tc, "Assets/Plugins/Autotile/Tilesets.asset")
         return tc
 
-    [MenuItem("GameObject/Create Other/Autotile")]
+    [MenuItem("GameObject/Create Other/Autotile %t")]
     def CreateAutotile() as Autotile:
         targetPos = Vector3.zero
 
@@ -30,6 +30,9 @@ static class AutotileMenus:
                 targetPos = screenCenterRay.origin + t * screenCenterRay.direction
                 targetPos.z = 0f
 
+        elif Selection.activeTransform:
+            targetPos = Selection.activeTransform.position
+
         targetObject = GameObject("Autotile")
         target = targetObject.AddComponent of Autotile()
         targetObject.transform.position = targetPos
@@ -37,7 +40,11 @@ static class AutotileMenus:
             target.tilesetKey = AutotileConfig.config.sets.FirstKey()
             target.renderer.material = AutotileConfig.config.sets.First().material
             target.Refresh()
-        Undo.RegisterCreatedObjectUndo(target, "Create Autotile")
+        Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
+
+    [MenuItem ("Component/Plugins/Autotile", true)]
+    def ValidateCreateAutotileComponent() as bool:
+        return Selection.activeTransform != null
 
     [MenuItem("Component/Plugins/Autotile")]
     def CreateAutotileComponent() as Autotile:

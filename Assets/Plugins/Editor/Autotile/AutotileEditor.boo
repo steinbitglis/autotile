@@ -253,6 +253,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 Vector2( 0.5f - margin_w,  0.5f - margin_h), Vector2( 0.5f - margin_w, -0.5f + margin_h),)
 
     private resizing_tiles = false
+    private tiles_to_resize = 0
     private control_and_handle_resizing = false
     def SnapshotImmediately():
         if resizing_tiles:
@@ -269,14 +270,17 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
     def StartSnapshot():
         unless resizing_tiles:
-            Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotile Length")
+            tiles = array(Transform, [t.transform for t in FindObjectsOfType(Autotile)])
+            tiles_to_resize = tiles.Length
+            Undo.SetSnapshotTarget(tiles, "Resize Autotile Length")
             Undo.CreateSnapshot()
             resizing_tiles = true
 
     def EndSnapshot():
         if resizing_tiles:
-            unless control_and_handle_resizing:
-                Undo.SetSnapshotTarget(array(Transform, [t.transform for t in FindObjectsOfType(Autotile)]), "Resize Autotile Length")
+            tiles = array(Transform, [t.transform for t in FindObjectsOfType(Autotile)])
+            unless control_and_handle_resizing or tiles_to_resize != tiles.Length:
+                Undo.SetSnapshotTarget(tiles, "Resize Autotile Length")
                 Undo.RegisterSnapshot()
                 Undo.ClearSnapshotTarget()
             resizing_tiles = false
@@ -345,6 +349,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             intersects = Generic.List of Autotile()
             for other_tile as Autotile in FindObjectsOfType(Autotile):
                 continue if other_tile == tile
+                continue if other_tile.transform.parent != tile.transform.parent
 
                 from_other = other_tile.transform.localToWorldMatrix.MultiplyPoint3x4
                 to_local = localTransform.worldToLocalMatrix.MultiplyPoint3x4
