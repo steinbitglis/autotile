@@ -344,9 +344,10 @@ class Autotile (MonoBehaviour):
                     connections.reverse[index] = -1
 
     def Awake():
-        GetComponent of MeshFilter().sharedMesh = Mesh()
-        boxCollider = GetComponent of BoxCollider()
-        Refresh()
+        ifdef UNITY_EDITOR:
+            GetComponent of MeshFilter().sharedMesh = Mesh()
+            boxCollider = GetComponent of BoxCollider()
+            Refresh()
 
     def Reset():
         GetComponent of MeshFilter().sharedMesh = Mesh()
