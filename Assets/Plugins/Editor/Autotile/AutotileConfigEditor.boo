@@ -78,7 +78,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
     def PopulateAtlasPreview(s as AutotileSet, name, initMetaAndTexture as bool) as bool:
         if not preview_failure:
 
-            unless s.material:
+            unless s.material and s.material.mainTexture:
                 preview_failure = true
                 Debug.LogError("$name did not have a readable texture to preview")
                 return false
@@ -119,7 +119,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         t.show = EditorGUILayout.Foldout(t.show, c)
         nextMeta as TilesetMeta
         if t.show:
-            if tilesetMeta.TryGetValue(s, nextMeta) and s.material:
+            if tilesetMeta.TryGetValue(s, nextMeta) and s.material and s.material.mainTexture:
                 EditorGUI.indentLevel += 1
 
                 mt = s.material.mainTexture as Texture2D

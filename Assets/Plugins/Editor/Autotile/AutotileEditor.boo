@@ -38,6 +38,13 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         prev_pivot_mode = Tools.pivotMode
         Tools.pivotMode = PivotMode.Pivot
 
+        for t in FindObjectsOfType(Autotile):
+            ts = AutotileConfig.config.sets[t.tilesetKey]
+            tsm = ts.material if ts
+            mt = tsm.mainTexture if tsm
+            if mt and t.renderer.sharedMaterial != tsm:
+                t.renderer.material = tsm
+
         p = EndSnapshot as EditorApplication.CallbackFunction
         unless EditorApplication.modifierKeysChanged and p in EditorApplication.modifierKeysChanged.GetInvocationList():
             EditorApplication.modifierKeysChanged = System.Delegate.Combine(EditorApplication.modifierKeysChanged, p)
@@ -77,6 +84,14 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 tile.previewVerticalFace   = tile.verticalFace
 
                 ts = AutotileConfig.config.sets[tile.tilesetKey]
+                unless ts.material:
+                    preview_failure = true
+                    Debug.LogError("The tileset $(tile.tilesetKey) did not have a material to preview")
+                    return false
+                unless ts.material.mainTexture:
+                    preview_failure = true
+                    Debug.LogError("The material $(ts.material) did not have a texture to preview")
+                    return false
                 mt = ts.material.mainTexture as Texture2D
                 nextPreview = Texture2D(60, 60, TextureFormat.ARGB32, false)
                 nextPreview.SetPixels32(array(Color32, 3600))
@@ -296,6 +311,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         if Event.current.type == EventType.Repaint:
             for t in FindObjectsOfType(Autotile):
                 t.Refresh()
+                unless t.renderer.sharedMaterial:
+                    t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
             DrawAutotileConnections()
 
         elif Event.current.type == EventType.KeyDown:

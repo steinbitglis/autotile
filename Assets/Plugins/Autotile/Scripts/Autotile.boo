@@ -320,6 +320,7 @@ class Autotile (MonoBehaviour):
     offsetMode as OffsetMode:
         set:
             _offsetMode = value
+            prev_offset = offset
 
             transform.position = transform.TransformPoint(offset)
             if value == OffsetMode.Left:
@@ -333,6 +334,11 @@ class Autotile (MonoBehaviour):
             elif value == OffsetMode.Center:
                 offset = Vector3( 0.0f, 0.0f)
             transform.position = transform.TransformPoint(-offset)
+
+            delta = offset - prev_offset
+            for t in GetComponentsInChildren of Transform(true):
+                unless t == transform:
+                    t.localPosition += delta
         get:
             return _offsetMode
 
