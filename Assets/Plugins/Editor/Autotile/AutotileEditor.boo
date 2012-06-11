@@ -9,8 +9,6 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     localTransform as Transform
 
     squeezeModeProp                as SerializedProperty
-    # horizontalFaceProp             as SerializedProperty
-    # verticalFaceProp               as SerializedProperty
     tileModeProp                   as SerializedProperty
     boxColliderMarginProp          as SerializedProperty
     useBoxColliderMarginLeftProp   as SerializedProperty
@@ -24,8 +22,6 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         tile = target as Autotile
 
         squeezeModeProp       = serializedObject.FindProperty("squeezeMode")
-        # horizontalFaceProp    = serializedObject.FindProperty("horizontalFace")
-        # verticalFaceProp      = serializedObject.FindProperty("verticalFace")
         tileModeProp          = serializedObject.FindProperty("tileMode")
         boxColliderMarginProp = serializedObject.FindProperty("boxColliderMargin")
         useBoxColliderMarginLeftProp   = serializedObject.FindProperty("useBoxColliderMarginLeft")
@@ -111,9 +107,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     nextPreview.SetPixels(15, 0, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
-                else: # if tile.tileMode == TileMode.Vertical:
+                else: # if tile.tileMode == TileMode.Centric:
                     preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
-                    GetPreview(ts.corners.aaaa, ts.tileSize, mt, preview)
+                    GetPreview(tile.getCentricCorner(), ts.tileSize, mt, preview)
                     nextPreview.SetPixels(15, 15, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
@@ -159,8 +155,6 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             return
 
         EditorGUILayout.PropertyField(squeezeModeProp, GUIContent("Squeeze Mode"))
-        # EditorGUILayout.PropertyField(horizontalFaceProp, GUIContent("Horizontal Face"))
-        # EditorGUILayout.PropertyField(verticalFaceProp, GUIContent("Vertical Face"))
         GUI.enabled = false
         EditorGUILayout.PropertyField(tileModeProp, GUIContent("Tile Mode"))
         GUI.enabled = true
@@ -187,42 +181,31 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         right_button_rect  = Rect(offset_grid.x + 20.0f + 98.0f, offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
         bottom_button_rect = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f + 98.0f, 30.0f, 30.0f)
 
-        air_left   = 1
-        air_left   = 0 if tile.verticalFace in (VerticalFace.Left, VerticalFace.Double)
-        air_right  = 1
-        air_right  = 0 if tile.verticalFace in (VerticalFace.Right, VerticalFace.Double)
-        air_bottom = 1
-        air_bottom = 0 if tile.horizontalFace in (HorizontalFace.Down, HorizontalFace.Double)
-        air_top    = 1
-        air_top    = 0 if tile.horizontalFace in (HorizontalFace.Up, HorizontalFace.Double)
+        air_info = Autotile.AirInfo(tile.GetAirInfo())
         air_gc = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air2.png", Texture))
         if GUI.Button(top_button_rect, air_gc):
             surrounding_change = true
-            air_top = 1 - air_top
+            air_info.up = not air_info.up
         if GUI.Button(left_button_rect, air_gc):
             surrounding_change = true
-            air_left = 1 - air_left
+            air_info.left = not air_info.left
         if PopulatePreview():
             GUI.DrawTexture(center_rect, tile.preview)
         if GUI.Button(right_button_rect, air_gc):
             surrounding_change = true
-            air_right = 1 - air_right
+            air_info.right = not air_info.right
         if GUI.Button(bottom_button_rect, air_gc):
             surrounding_change = true
-            air_bottom = 1 - air_bottom
+            air_info.down = not air_info.down
         if surrounding_change:
-            Undo.RegisterUndo(tile, "Change tile surroundings")
-            if_00_01_10_11 air_left, air_right:
-                tile.verticalFace = VerticalFace.Double
-                tile.verticalFace = VerticalFace.Left
-                tile.verticalFace = VerticalFace.Right
-                tile.verticalFace = VerticalFace.None
-            if_00_01_10_11 air_top, air_bottom:
-                tile.horizontalFace = HorizontalFace.Double
-                tile.horizontalFace = HorizontalFace.Up
-                tile.horizontalFace = HorizontalFace.Down
-                tile.horizontalFace = HorizontalFace.None
-            EditorUtility.SetDirty(tile)
+            all_autotiles = FindObjectsOfType(Autotile)
+            Undo.RegisterUndo(all_autotiles, "Change tile surroundings")
+            tile.SetAndPropagateAirInfo(air_info)
+            for one_tile as Autotile in all_autotiles:
+                one_tile.ApplyFace()
+                if one_tile.dirty:
+                    EditorUtility.SetDirty(one_tile)
+                    one_tile.Refresh() unless one_tile == tile
 
         offset_grid = GUILayoutUtility.GetRect(200.0f, 110.0f)
         GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 17.0f, 200.0f, 15.0f), "Offset from")

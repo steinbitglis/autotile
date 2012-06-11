@@ -161,6 +161,7 @@ class AutotileCorners (IEnumerable[Tile]):
     public rdrb = Tile()
     public rgbb = Tile()
     public rglc = Tile()
+    public unknown = Tile()
 
     private static myType = typeof(AutotileCorners)
     self[index as string] as Tile:
@@ -218,6 +219,7 @@ class AutotileCorners (IEnumerable[Tile]):
         yield rdrb
         yield rgbb
         yield rglc
+        yield unknown
 
     def IEnumerable.GetEnumerator() as IEnumerator:
         return myGetEnumerator()
@@ -240,6 +242,7 @@ class AutotileCorners (IEnumerable[Tile]):
         result.raac = raac.Duplicate(); result.radc = radc.Duplicate(); result.rarb = rarb.Duplicate()
         result.rdac = rdac.Duplicate(); result.rddc = rddc.Duplicate(); result.rdrb = rdrb.Duplicate()
         result.rgbb = rgbb.Duplicate(); result.rglc = rglc.Duplicate()
+        result.unknown = unknown.Duplicate()
         return result
 
 class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenterSet]]):

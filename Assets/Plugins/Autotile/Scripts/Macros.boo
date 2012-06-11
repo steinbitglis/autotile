@@ -73,6 +73,7 @@ macro all_corners(tileset as Boo.Lang.Compiler.Ast.ReferenceExpression, corners 
         $f($tileset, $corners.rdrb, "RDRB")
         $f($tileset, $corners.rgbb, "RGBB")
         $f($tileset, $corners.rglc, "RGLC")
+        $f($tileset, $corners.unknown, "Unknown")
     |]
 
 macro binary_search_autotile_connection(index as Expression):

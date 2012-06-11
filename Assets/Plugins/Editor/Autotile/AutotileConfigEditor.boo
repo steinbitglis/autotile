@@ -57,6 +57,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             if icon =~ /^[ABLRD][ABCGD][ABLRD][ABCGD]\.png$/:
                 tips = ExpandedCornerLetters(icon)
                 corners[icon[:4]] = GUIContent(AssetDatabase.LoadAssetAtPath("$corner_folder/$(icon[:4]).png", Texture), tips)
+        corners["Unknown"] = GUIContent(AssetDatabase.LoadAssetAtPath("$corner_folder/Unknown.png", Texture), "Fallback corner")
 
         config = target as AutotileConfig
 
