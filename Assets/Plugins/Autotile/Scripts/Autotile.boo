@@ -128,6 +128,9 @@ class AutotileConnections (Generic.IEnumerable[of Autotile]):
 [RequireComponent(MeshRenderer), RequireComponent(MeshFilter), ExecuteInEditMode]
 class Autotile (MonoBehaviour):
 
+    def OnDrawGizmos():
+        Gizmos.DrawIcon(transform.position, "Autotile.png", true)
+
     inline_enum connectionDirection:
         i_left
         i_left_up

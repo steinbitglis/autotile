@@ -20,7 +20,9 @@ static class AutotileMenus:
     def CreateAutotile() as Autotile:
         targetPos = Vector3.zero
 
-        ccam = Camera.current
+        view = SceneView.currentDrawingSceneView
+        cameras = view.GetAllSceneCameras()
+        ccam = cameras[0] if cameras.Length
         if ccam:
             screenCenterRay = ccam.ScreenPointToRay(Vector3(ccam.pixelWidth / 2f, ccam.pixelHeight / 2f, 0.0f))
             if screenCenterRay.direction.z > 0f and  screenCenterRay.origin.z < 0f or\
@@ -29,9 +31,6 @@ static class AutotileMenus:
                 t = -screenCenterRay.origin.z / screenCenterRay.direction.z
                 targetPos = screenCenterRay.origin + t * screenCenterRay.direction
                 targetPos.z = 0f
-
-        elif Selection.activeTransform:
-            targetPos = Selection.activeTransform.position
 
         targetObject = GameObject("Autotile")
         target = targetObject.AddComponent of Autotile()
