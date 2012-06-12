@@ -304,21 +304,37 @@ class Autotile (MonoBehaviour):
     [SerializeField]
     private _offsetMode = OffsetMode.Center
 
+    [SerializeField]
     private applied_tileset_key = ""
+    [SerializeField]
     private applied_horizontal_face = HorizontalFace.Up
+    [SerializeField]
     private applied_vertical_face = VerticalFace.Left
+    [SerializeField]
     private applied_scale = Vector3.one
+    [SerializeField]
     private applied_discrete_width = 1
+    [SerializeField]
     private applied_discrete_height = 1
+    [SerializeField]
     private applied_offset = Vector3.zero
+    [SerializeField]
     private applied_box_collider_margin = 0.0f
+    [SerializeField]
     private applied_use_box_collider_margins_left = true
+    [SerializeField]
     private applied_use_box_collider_margins_right = true
+    [SerializeField]
     private applied_use_box_collider_margins_bottom = true
+    [SerializeField]
     private applied_use_box_collider_margins_top = true
 
     [System.NonSerialized]
     public dirty = false
+    [System.NonSerialized]
+    public unsaved = false
+    [System.NonSerialized]
+    public unsavedMesh = false
 
     private favoredConnections = Generic.List of int()
 
@@ -356,12 +372,17 @@ class Autotile (MonoBehaviour):
 
     def Awake():
         ifdef UNITY_EDITOR:
-            GetComponent of MeshFilter().sharedMesh = Mesh()
+            mf = GetComponent of MeshFilter()
+            sm = mf.sharedMesh
+            unless sm:
+                mf.sharedMesh = Mesh()
+                unsavedMesh = true
             boxCollider = GetComponent of BoxCollider()
             Refresh()
 
     def Reset():
         GetComponent of MeshFilter().sharedMesh = Mesh()
+        unsavedMesh = true
         boxCollider = GetComponent of BoxCollider()
         ApplyCentric()
 
@@ -626,7 +647,7 @@ class Autotile (MonoBehaviour):
                     elif c_index in (i_left, i_right):
                         SetHorizontalFace(leftOrDown, rightOrUp)
                 PropagateAirInfo(air_info, GetAirInfo())
-                Rebuild()
+                Refresh()
             ensure:
                 conformingToAir = false
 
@@ -949,6 +970,7 @@ class Autotile (MonoBehaviour):
         mf.sharedMesh.triangles = Autotile.doubleTriangles
         mf.sharedMesh.uv = Autotile.TileUVs(left) + Autotile.TileUVs(right)
         mf.sharedMesh.RecalculateNormals()
+        unsavedMesh = true
         AdjustBoxCollider()
 
     def AdjustBoxCollider():
@@ -1091,6 +1113,7 @@ class Autotile (MonoBehaviour):
         mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
         mf.sharedMesh.uv = uvs
         mf.sharedMesh.RecalculateNormals()
+        unsavedMesh = true
         AdjustBoxCollider()
 
     def ApplyHorizontalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]):
@@ -1107,6 +1130,7 @@ class Autotile (MonoBehaviour):
         mf.sharedMesh.triangles = Autotile.doubleTriangles
         mf.sharedMesh.uv = Autotile.TileUVs(bottom) + Autotile.TileUVs(top)
         mf.sharedMesh.RecalculateNormals()
+        unsavedMesh = true
         AdjustBoxCollider()
 
     def ApplyVerticalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]):
@@ -1122,6 +1146,7 @@ class Autotile (MonoBehaviour):
             mf.sharedMesh.triangles = Autotile.singleTriangles
             mf.sharedMesh.uv = uvs
             mf.sharedMesh.RecalculateNormals()
+            unsavedMesh = true
         AdjustBoxCollider()
 
     private class Descending (System.Collections.Generic.IComparer[of int]):
@@ -1568,6 +1593,7 @@ class Autotile (MonoBehaviour):
                 y = Mathf.Ceil(transform.localScale.y) cast int
         if applied_discrete_width != x or applied_discrete_height != y or dirty:
             dirty = false
+            unsaved = true
             if horizontalFace == HorizontalFace.None and verticalFace == VerticalFace.None:
                 ApplyNone()
             else:
@@ -1586,6 +1612,7 @@ class Autotile (MonoBehaviour):
                 elif y == 1:
                     ApplyHorizontal(x)
         if applied_scale != transform.localScale:
+            unsaved = true
             if horizontalFace == HorizontalFace.None and verticalFace == VerticalFace.None:
                 applied_scale = transform.localScale
             else:

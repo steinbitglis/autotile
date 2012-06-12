@@ -124,6 +124,16 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 Debug.LogError("$(tile.gameObject.name) did not find tileset to preview")
         return not preview_failure
 
+    def Refresh(t as Autotile):
+        t.Refresh()
+        if t.unsaved:
+            t.unsaved = false
+            EditorUtility.SetDirty(tile)
+        if t.unsavedMesh:
+            t.unsavedMesh = false
+            mf = tile.GetComponent of MeshFilter()
+            EditorUtility.SetDirty(mf) if mf
+
     virtual def OnInspectorGUI():
         serializedObject.Update()
 
@@ -148,8 +158,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                         Undo.RegisterUndo(serializedObject.targetObjects, "Change Autotile tileset")
                     t.tilesetKey = tilesets[newIndex]
                     t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
-                    t.Refresh() if serializedObject.isEditingMultipleObjects
-                    EditorUtility.SetDirty(t)
+                    Refresh(t) if serializedObject.isEditingMultipleObjects
 
         if serializedObject.isEditingMultipleObjects:
             return
@@ -170,7 +179,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
         if GUILayout.Button("Reset local connections"):
             tile.ResetAllConnections()
-            EditorUtility.SetDirty(tile)
+            Refresh(tile)
 
         offset_grid = GUILayoutUtility.GetRect(175.0f, 140.0f)
         GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 5.0f, 200.0f, 15.0f), "Surroundings")
@@ -202,10 +211,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             Undo.RegisterUndo(all_autotiles, "Change tile surroundings")
             tile.SetAndPropagateAirInfo(air_info)
             for one_tile as Autotile in all_autotiles:
-                one_tile.ApplyFace()
-                if one_tile.dirty:
-                    EditorUtility.SetDirty(one_tile)
-                    one_tile.Refresh() unless one_tile == tile
+                Refresh(one_tile)
 
         offset_grid = GUILayoutUtility.GetRect(200.0f, 110.0f)
         GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 17.0f, 200.0f, 15.0f), "Offset from")
@@ -233,7 +239,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             EditorUtility.SetDirty(tile)
 
         serializedObject.ApplyModifiedProperties()
-        tile.Refresh()
+        Refresh(tile)
 
     def DrawAutotileConnections():
         for local_connection as int, remote as Autotile in enumerate(tile.connections):
@@ -293,9 +299,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
         if Event.current.type == EventType.Repaint:
             for t in FindObjectsOfType(Autotile):
-                t.Refresh()
+                Refresh(t)
                 unless t.renderer.sharedMaterial:
                     t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
+                    EditorUtility.SetDirty(t.renderer)
             DrawAutotileConnections()
 
         elif Event.current.type == EventType.KeyDown:
@@ -310,7 +317,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
         elif Event.current.type == EventType.ScrollWheel and Event.current.control:
             StartSnapshot()
-            tile.Refresh()
+            Refresh(tile)
             ccam = Camera.current
             mouseRay = ccam.ScreenPointToRay(Vector3(Event.current.mousePosition.x, ccam.pixelHeight - Event.current.mousePosition.y, 0.0f))
             if mouseRay.direction.z > 0.0f:
@@ -327,23 +334,22 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     if one_tile.secondaryTileMode == TileMode.Horizontal:
                         one_tile.transform.localScale.x -= Event.current.delta.y / 3.0f
                         one_tile.transform.localScale = one_tile.SuggestScales()
-                        one_tile.Refresh()
                         changed = true
                     elif one_tile.secondaryTileMode == TileMode.Vertical:
                         one_tile.transform.localScale.y -= Event.current.delta.y / 3.0f
                         one_tile.transform.localScale = one_tile.SuggestScales()
-                        one_tile.Refresh()
                         changed = true
                     if changed:
+                        one_tile.Refresh()
                         one_tile.PushNeighbours()
-                        EditorUtility.SetDirty(one_tile)
+                        Refresh(one_tile)
 
                     Event.current.Use()
                     break
 
         elif Event.current.type == EventType.MouseUp and Event.current.button == 0:
             NormalizeScales()
-            tile.Refresh()
+            Refresh(tile)
 
             local_collision_quad = tile.OffsetVertices2(MarginQuad(0.0f, localTransform))
             intersects = Generic.List of Autotile()
@@ -374,7 +380,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             tile.PushNeighbours()
 
             for affected_tile in affected_tiles:
-                EditorUtility.SetDirty(affected_tile)
+                Refresh(affected_tile)
             for affected_transform in affected_transforms:
                 EditorUtility.SetDirty(affected_transform)
 
