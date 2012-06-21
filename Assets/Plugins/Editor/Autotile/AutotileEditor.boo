@@ -46,6 +46,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             mt = tsm.mainTexture if tsm
             if mt and t.renderer.sharedMaterial != tsm:
                 t.renderer.material = tsm
+                EditorUtility.SetDirty(t.renderer)
 
         p = EndSnapshot as EditorApplication.CallbackFunction
         unless EditorApplication.modifierKeysChanged and p in EditorApplication.modifierKeysChanged.GetInvocationList():
@@ -169,7 +170,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                         undoSaved = true
                         Undo.RegisterUndo(serializedObject.targetObjects, "Change Autotile tileset")
                     t.tilesetKey = tilesets[newIndex]
-                    t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
+                    new_material = AutotileConfig.config.sets[t.tilesetKey].material
+                    unless t.renderer.sharedMaterial == new_material:
+                        t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
+                        EditorUtility.SetDirty(t.renderer)
                     Refresh(t) if serializedObject.isEditingMultipleObjects
 
         if serializedObject.isEditingMultipleObjects:
