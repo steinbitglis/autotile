@@ -44,6 +44,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
         highlightColor = Color(GUI.contentColor.r, GUI.contentColor.g, GUI.contentColor.b, 0.5f)
         highlightTexture = Texture2D(1, 1, TextureFormat.ARGB32, false)
+        highlightTexture.hideFlags = HideFlags.DontSave
         highlightTexture.SetPixel(0, 0, highlightColor)
         highlightTexture.Apply()
 
@@ -98,6 +99,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                             Mathf.Min(mt.height, 256.0f),
                             TextureFormat.ARGB32,
                             false)
+                        nextTexture.hideFlags = HideFlags.DontSave
                         TextureScale.Bilinear(mt, nextTexture, self)
                         newMeta.preview = nextTexture
                         s.preview = nextTexture

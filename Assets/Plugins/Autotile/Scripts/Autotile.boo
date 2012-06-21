@@ -372,13 +372,25 @@ class Autotile (MonoBehaviour):
 
     def Awake():
         ifdef UNITY_EDITOR:
-            mf = GetComponent of MeshFilter()
-            sm = mf.sharedMesh
-            unless sm:
-                mf.sharedMesh = Mesh()
-                unsavedMesh = true
-            boxCollider = GetComponent of BoxCollider()
-            Refresh()
+            unless Application.isPlaying:
+                mf = GetComponent of MeshFilter()
+                sm = mf.sharedMesh
+                if sm:
+                    for t in FindObjectsOfType(Autotile):
+                        if t != self and sm == t.GetComponent of MeshFilter().sharedMesh:
+                            mf.sharedMesh = Mesh()
+                            unsavedMesh = true
+                            dirty = true
+                            break
+                else:
+                    mf.mesh = Mesh()
+                    unsavedMesh = true
+                    dirty = true
+
+                boxCollider = GetComponent of BoxCollider()
+                Refresh()
+        ifdef not UNITY_EDITOR:
+            pass
 
     def Reset():
         GetComponent of MeshFilter().sharedMesh = Mesh()
@@ -1142,6 +1154,7 @@ class Autotile (MonoBehaviour):
         uvs = Autotile.TileUVs(tile)
         mf = GetComponent of MeshFilter()
         if mf.sharedMesh:
+            mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(Autotile.singleVertices)
             mf.sharedMesh.triangles = Autotile.singleTriangles
             mf.sharedMesh.uv = uvs
@@ -1232,6 +1245,42 @@ class Autotile (MonoBehaviour):
         result.down  = horizontalFace in (HorizontalFace.Double, HorizontalFace.Down)
         result.left  = verticalFace in (VerticalFace.Double, VerticalFace.Left)
         result.right = verticalFace in (VerticalFace.Double, VerticalFace.Right)
+        return result
+
+    public class AirInfoExtended:
+        #                                          X_____X
+        #   X____________X         X_____X         |     |
+        #   |            |         |     |         |     |
+        #   |            |         |     |         |     |
+        #   |            |         |     |         |     |
+        #   X^^^^^^^^^^^^X         X^^^^^X         |     |
+        #                                          X^^^^^X
+        public upLeft = false
+        public upRight = false
+        public downRight = false
+        public downLeft = false
+
+        def constructor():
+            pass
+
+        def constructor(a as AirInfoExtended):
+            upLeft = a.upLeft
+            upRight = a.upRight
+            downRight = a.downRight
+            downLeft = a.downLeft
+
+        def constructor(ul as bool, ur as bool, dr as bool, dl as bool):
+            upLeft = ul
+            upRight = ur
+            downRight = dr
+            downLeft = dl
+
+    def GetAirInfoExtended() as AirInfoExtended:
+        result = AirInfoExtended()
+        result.upLeft    = horizontalFace in (HorizontalFace.Double, HorizontalFace.Up)
+        result.upRight   = horizontalFace in (HorizontalFace.Double, HorizontalFace.Down)
+        result.downRight =   verticalFace in (VerticalFace.Double, VerticalFace.Left)
+        result.downLeft  =   verticalFace in (VerticalFace.Double, VerticalFace.Right)
         return result
 
     def getHorizontalConnectionClassification(\
@@ -1661,6 +1710,8 @@ class Autotile (MonoBehaviour):
                         remote.Refresh()
             ensure:
                 workingOnConnections = false
+
+        DestroyImmediate( GetComponent of MeshFilter().sharedMesh, true )
 
     def ApplyOffset():
         if applied_offset != offset:

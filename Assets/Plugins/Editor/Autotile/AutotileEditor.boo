@@ -8,6 +8,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     tile as Autotile
     localTransform as Transform
 
+    airGuiContent as GUIContent
+
     squeezeModeProp                as SerializedProperty
     tileModeProp                   as SerializedProperty
     boxColliderMarginProp          as SerializedProperty
@@ -20,6 +22,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
     def OnEnable():
         tile = target as Autotile
+
+        airGuiContent = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air2.png", Texture))
 
         squeezeModeProp       = serializedObject.FindProperty("squeezeMode")
         tileModeProp          = serializedObject.FindProperty("tileMode")
@@ -62,6 +66,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         if t.rotated:
             ourRotation = ((t.rotation + 1) cast int) cast TextureScaleRotate
         TextureScale.Bilinear(fullTile, result, self, TextureScaleTransform(ourFlip, ourRotation))
+        DestroyImmediate(fullTile)
 
     private preview_failure = false
     private try_again = true
@@ -91,6 +96,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 mt = ts.material.mainTexture as Texture2D
                 nextPreview = Texture2D(60, 60, TextureFormat.ARGB32, false)
                 nextPreview.SetPixels32(array(Color32, 3600))
+                nextPreview.hideFlags = HideFlags.DontSave
+                DestroyImmediate(tile.preview)
                 if tile.tileMode == TileMode.Horizontal:
                     preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     GetPreview(tile.getLeftCorner(), ts.tileSize, mt, preview)
@@ -99,6 +106,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     nextPreview.SetPixels(30, 15, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
+                    DestroyImmediate(preview)
                 elif tile.tileMode == TileMode.Vertical:
                     preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     GetPreview(tile.getTopCorner(), ts.tileSize, mt, preview)
@@ -107,12 +115,14 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     nextPreview.SetPixels(15, 0, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
+                    DestroyImmediate(preview)
                 else: # if tile.tileMode == TileMode.Centric:
                     preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     GetPreview(tile.getCentricCorner(), ts.tileSize, mt, preview)
                     nextPreview.SetPixels(15, 15, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
+                    DestroyImmediate(preview)
             except e as UnityException:
                 preview_failure = true
                 Debug.LogError("$(tile.gameObject.name) did not have a readable texture to preview")
@@ -191,19 +201,26 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         bottom_button_rect = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f + 98.0f, 30.0f, 30.0f)
 
         air_info = Autotile.AirInfo(tile.GetAirInfo())
-        air_gc = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air2.png", Texture))
-        if GUI.Button(top_button_rect, air_gc):
+
+        if tile.tileMode == TileMode.Centric:
+            unless tile.connections.left or tile.connections.right or tile.connections.up or tile.connections.down:
+                GUI.enabled = false
+                unless air_info.up and air_info.left and air_info.right and air_info.down:
+                    air_info.up = air_info.left = air_info.right = air_info.down = true
+                    surrounding_change = true
+
+        if GUI.Button(top_button_rect, airGuiContent):
             surrounding_change = true
             air_info.up = not air_info.up
-        if GUI.Button(left_button_rect, air_gc):
+        if GUI.Button(left_button_rect, airGuiContent):
             surrounding_change = true
             air_info.left = not air_info.left
         if PopulatePreview():
             GUI.DrawTexture(center_rect, tile.preview)
-        if GUI.Button(right_button_rect, air_gc):
+        if GUI.Button(right_button_rect, airGuiContent):
             surrounding_change = true
             air_info.right = not air_info.right
-        if GUI.Button(bottom_button_rect, air_gc):
+        if GUI.Button(bottom_button_rect, airGuiContent):
             surrounding_change = true
             air_info.down = not air_info.down
         if surrounding_change:
@@ -213,7 +230,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             for one_tile as Autotile in all_autotiles:
                 Refresh(one_tile)
 
-        offset_grid = GUILayoutUtility.GetRect(200.0f, 110.0f)
+        GUI.enabled = true
+
+        offset_grid = GUILayoutUtility.GetRect(200.0f, 125.0f)
         GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 17.0f, 200.0f, 15.0f), "Offset from")
 
         up_button_rect     = Rect(offset_grid.x + 20.0f +  60.0f, offset_grid.y + 20.0f + 12.0f, 60.0f, 30.0f)
