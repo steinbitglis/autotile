@@ -9,6 +9,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     localTransform as Transform
 
     airGuiContent as GUIContent
+    blackGuiContent as GUIContent
 
     squeezeModeProp                as SerializedProperty
     tileModeProp                   as SerializedProperty
@@ -23,7 +24,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     def OnEnable():
         tile = target as Autotile
 
-        airGuiContent = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air2.png", Texture))
+        airGuiContent = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air3.png", Texture))
+        blackGuiContent = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air3-black.png", Texture))
 
         squeezeModeProp       = serializedObject.FindProperty("squeezeMode")
         tileModeProp          = serializedObject.FindProperty("tileMode")
@@ -209,18 +211,22 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     air_info.up = air_info.left = air_info.right = air_info.down = true
                     surrounding_change = true
 
-        if GUI.Button(top_button_rect, airGuiContent):
+        if (air_info.up and GUI.Button(top_button_rect, airGuiContent)) or\
+           (not air_info.up and GUI.Button(top_button_rect, blackGuiContent)):
             surrounding_change = true
             air_info.up = not air_info.up
-        if GUI.Button(left_button_rect, airGuiContent):
+        if (air_info.left and GUI.Button(left_button_rect, airGuiContent)) or\
+           (not air_info.left and GUI.Button(left_button_rect, blackGuiContent)):
             surrounding_change = true
             air_info.left = not air_info.left
         if PopulatePreview():
             GUI.DrawTexture(center_rect, tile.preview)
-        if GUI.Button(right_button_rect, airGuiContent):
+        if (air_info.right and GUI.Button(right_button_rect, airGuiContent)) or\
+           (not air_info.right and GUI.Button(right_button_rect, blackGuiContent)):
             surrounding_change = true
             air_info.right = not air_info.right
-        if GUI.Button(bottom_button_rect, airGuiContent):
+        if (air_info.down and GUI.Button(bottom_button_rect, airGuiContent)) or\
+           (not air_info.down and GUI.Button(bottom_button_rect, blackGuiContent)):
             surrounding_change = true
             air_info.down = not air_info.down
         if surrounding_change:
