@@ -351,7 +351,7 @@ class Autotile (MonoBehaviour):
     public horizontalFace = HorizontalFace.Double
     public verticalFace = VerticalFace.Double
     [SerializeField]
-    private usesAirInfo as bool
+    public usesAirInfo as bool
     #----------------------------------------
 
     public offset as Vector3

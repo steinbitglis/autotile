@@ -140,10 +140,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         t.Refresh()
         if t.unsaved:
             t.unsaved = false
-            EditorUtility.SetDirty(tile)
+            EditorUtility.SetDirty(t)
         if t.unsavedMesh:
             t.unsavedMesh = false
-            mf = tile.GetComponent of MeshFilter()
+            mf = t.GetComponent of MeshFilter()
             EditorUtility.SetDirty(mf) if mf
 
     def MakeScreenTileChild(f as callable(Autotile)):
@@ -312,6 +312,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                                         air_info.down,     air_info.up,
                                         air_info.leftUp,   air_info.rightUp,
                                         air_info.leftDown, not air_info.rightDown)
+
+        if not tile.usesAirInfo and GUILayout.Button("Upgrade without change (ctrl+u)"):
+            surrounding_change = true
+
         if surrounding_change:
             all_autotiles = FindObjectsOfType(Autotile)
             Undo.RegisterUndo(all_autotiles, "Change tile surroundings")
@@ -454,7 +458,12 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         else:
             tile.transform.localScale.y = 1.0f
 
+    private do_autotile_upgrades as bool
     def OnSceneGUI():
+
+        if do_autotile_upgrades:
+            do_autotile_upgrades = false
+            AutotileMenus.UpgradeAutotiles()
 
         if Event.current.type == EventType.Repaint:
             for t in FindObjectsOfType(Autotile):
