@@ -20,6 +20,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     useBoxColliderMarginTopProp    as SerializedProperty
 
     private prev_pivot_mode as PivotMode
+    private blackAirInfo = Autotile.AirInfoState(false, false, false, false,false, false, false, false)
 
     def OnEnable():
         tile = target as Autotile
@@ -73,19 +74,17 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
     private preview_failure = false
     private try_again = true
-    def PopulatePreview() as bool:
+    def PopulatePreview(air_info as Autotile.AirInfoState) as bool:
         if not preview_failure and\
            (try_again or\
             not tile.preview or\
-            tile.previewTileMode       != tile.tileMode or\
-            tile.previewHorizontalFace != tile.horizontalFace or\
-            tile.previewVerticalFace   != tile.verticalFace):
+            tile.previewTileMode != tile.tileMode or\
+            not tile.previewAirInfo.Equals(air_info)):
 
             try:
                 try_again = false
-                tile.previewTileMode       = tile.tileMode
-                tile.previewHorizontalFace = tile.horizontalFace
-                tile.previewVerticalFace   = tile.verticalFace
+                tile.previewTileMode = tile.tileMode
+                tile.previewAirInfo  = air_info
 
                 ts = AutotileConfig.config.sets[tile.tilesetKey]
                 unless ts.material:
@@ -131,7 +130,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 Debug.LogError("$(tile.gameObject.name) did not have a readable texture to preview")
             except e as Generic.KeyNotFoundException:
                 preview_failure = true
-                Debug.LogError("$(tile.gameObject.name) did not find tileset to preview")
+                Debug.LogError("$(tile.gameObject.name) did not find tileset to preview\n$(e.Message)")
             except e as System.ArgumentNullException:
                 preview_failure = true
                 Debug.LogError("$(tile.gameObject.name) did not find tileset to preview")
@@ -146,6 +145,20 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             t.unsavedMesh = false
             mf = tile.GetComponent of MeshFilter()
             EditorUtility.SetDirty(mf) if mf
+
+    def MakeScreenTileChild(f as callable(Autotile)):
+        screenObject = GameObject()
+        screen = screenObject.AddComponent of Autotile()
+        screen.transform.parent = localTransform
+        f(screen)
+        screen.airInfo = blackAirInfo
+        screen.tileMode = TileMode.None
+        screen.secondaryTileMode = TileMode.None
+        screen.tilesetKey = tile.tilesetKey
+        screen.renderer.material = AutotileConfig.config.sets[screen.tilesetKey].material
+        screen.Refresh()
+        Undo.RegisterCreatedObjectUndo(screenObject, "Create black tile")
+        EditorUtility.SetDirty(tile)
 
     virtual def OnInspectorGUI():
         serializedObject.Update()
@@ -200,39 +213,105 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         offset_grid = GUILayoutUtility.GetRect(175.0f, 140.0f)
         GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 5.0f, 200.0f, 15.0f), "Surroundings")
 
-        top_button_rect    = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f         , 30.0f, 30.0f)
-        left_button_rect   = Rect(offset_grid.x + 20.0f        , offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
-        center_rect        = Rect(offset_grid.x + 20.0f + 34.0f, offset_grid.y + 20.0f + 34.0f, 60.0f, 60.0f)
-        right_button_rect  = Rect(offset_grid.x + 20.0f + 98.0f, offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
-        bottom_button_rect = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f + 98.0f, 30.0f, 30.0f)
+        left_top_button_rect     = Rect(offset_grid.x + 20.0f +  5.0f, offset_grid.y + 20.0f +  5.0f, 30.0f, 30.0f)
+        top_button_rect          = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f +  5.0f, 30.0f, 30.0f)
+        right_top_button_rect    = Rect(offset_grid.x + 20.0f + 93.0f, offset_grid.y + 20.0f +  5.0f, 30.0f, 30.0f)
+        left_button_rect         = Rect(offset_grid.x + 20.0f +  5.0f, offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
+        center_rect              = Rect(offset_grid.x + 20.0f + 34.0f, offset_grid.y + 20.0f + 34.0f, 60.0f, 60.0f)
+        right_button_rect        = Rect(offset_grid.x + 20.0f + 93.0f, offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
+        left_bottom_button_rect  = Rect(offset_grid.x + 20.0f +  5.0f, offset_grid.y + 20.0f + 93.0f, 30.0f, 30.0f)
+        bottom_button_rect       = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f + 93.0f, 30.0f, 30.0f)
+        right_bottom_button_rect = Rect(offset_grid.x + 20.0f + 93.0f, offset_grid.y + 20.0f + 93.0f, 30.0f, 30.0f)
 
-        air_info = Autotile.AirInfo(tile.GetAirInfo())
+        air_info_state = tile.airInfo
+        air_info = Autotile.AirInfo(air_info_state)
 
-        if tile.tileMode == TileMode.Centric:
-            unless tile.connections.left or tile.connections.right or tile.connections.up or tile.connections.down:
-                GUI.enabled = false
-                unless air_info.up and air_info.left and air_info.right and air_info.down:
-                    air_info.up = air_info.left = air_info.right = air_info.down = true
-                    surrounding_change = true
+        is_centric = tile.tileMode == TileMode.Centric
+        is_horizontal = tile.tileMode == TileMode.Horizontal
+        is_vertical = tile.tileMode == TileMode.Vertical
+        is_none = tile.tileMode == TileMode.None
+        has_left_corner   = is_centric or is_horizontal and tile.DrawsLeftCorner()
+        has_right_corner  = is_centric or is_horizontal and tile.DrawsRightCorner()
+        has_bottom_corner = is_centric or is_vertical and tile.DrawsBottomCorner()
+        has_top_corner    = is_centric or is_vertical and tile.DrawsTopCorner()
+        has_left_top_corner = is_none or has_left_corner or has_top_corner
+        has_right_top_corner = is_none or has_right_corner or has_top_corner
+        has_left_bottom_corner = is_none or has_left_corner or has_bottom_corner
+        has_right_bottom_corner = is_none or has_right_corner or has_bottom_corner
 
-        if (air_info.up and GUI.Button(top_button_rect, airGuiContent)) or\
-           (not air_info.up and GUI.Button(top_button_rect, blackGuiContent)):
+        if tile.tileMode == TileMode.None:
+            if true in (air_info.leftUp, air_info.rightUp, air_info.leftDown, air_info.rightDown):
+                ReturnFromNoneScales()
+
+        if has_left_top_corner and\
+           ((air_info.leftUp and GUI.Button(left_top_button_rect, airGuiContent)) or\
+            (not air_info.leftUp and GUI.Button(left_top_button_rect, blackGuiContent))):
             surrounding_change = true
-            air_info.up = not air_info.up
-        if (air_info.left and GUI.Button(left_button_rect, airGuiContent)) or\
-           (not air_info.left and GUI.Button(left_button_rect, blackGuiContent)):
+            air_info = Autotile.AirInfo(air_info.left, air_info.right,
+                                        air_info.down,       air_info.up,
+                                        not air_info.leftUp, air_info.rightUp,
+                                        air_info.leftDown,   air_info.rightDown)
+        if is_horizontal and\
+           ((air_info.up and GUI.Button(top_button_rect, airGuiContent)) or\
+            (not air_info.up and GUI.Button(top_button_rect, blackGuiContent))):
             surrounding_change = true
-            air_info.left = not air_info.left
-        if PopulatePreview():
+            air_info = Autotile.AirInfo(air_info.left, air_info.right,
+                                        air_info.down,     not air_info.up,
+                                        air_info.leftUp,   air_info.rightUp,
+                                        air_info.leftDown, air_info.rightDown)
+        if has_right_top_corner and\
+           ((air_info.rightUp and GUI.Button(right_top_button_rect, airGuiContent)) or\
+            (not air_info.rightUp and GUI.Button(right_top_button_rect, blackGuiContent))):
+            surrounding_change = true
+            air_info = Autotile.AirInfo(air_info.left, air_info.right,
+                                        air_info.down,     air_info.up,
+                                        air_info.leftUp,   not air_info.rightUp,
+                                        air_info.leftDown, air_info.rightDown)
+
+        if is_vertical and\
+           ((air_info.left and GUI.Button(left_button_rect, airGuiContent)) or\
+            (not air_info.left and GUI.Button(left_button_rect, blackGuiContent))):
+            surrounding_change = true
+            air_info = Autotile.AirInfo(not air_info.left, air_info.right,
+                                        air_info.down,     air_info.up,
+                                        air_info.leftUp,   air_info.rightUp,
+                                        air_info.leftDown, air_info.rightDown)
+        if PopulatePreview(air_info_state):
             GUI.DrawTexture(center_rect, tile.preview)
-        if (air_info.right and GUI.Button(right_button_rect, airGuiContent)) or\
-           (not air_info.right and GUI.Button(right_button_rect, blackGuiContent)):
+
+        if is_vertical and\
+           ((air_info.right and GUI.Button(right_button_rect, airGuiContent)) or\
+            (not air_info.right and GUI.Button(right_button_rect, blackGuiContent))):
             surrounding_change = true
-            air_info.right = not air_info.right
-        if (air_info.down and GUI.Button(bottom_button_rect, airGuiContent)) or\
-           (not air_info.down and GUI.Button(bottom_button_rect, blackGuiContent)):
+            air_info = Autotile.AirInfo(air_info.left,     not air_info.right,
+                                        air_info.down,     air_info.up,
+                                        air_info.leftUp,   air_info.rightUp,
+                                        air_info.leftDown, air_info.rightDown)
+
+        if has_left_bottom_corner and\
+           ((air_info.leftDown and GUI.Button(left_bottom_button_rect, airGuiContent)) or\
+            (not air_info.leftDown and GUI.Button(left_bottom_button_rect, blackGuiContent))):
             surrounding_change = true
-            air_info.down = not air_info.down
+            air_info = Autotile.AirInfo(air_info.left,         air_info.right,
+                                        air_info.down,         air_info.up,
+                                        air_info.leftUp,       air_info.rightUp,
+                                        not air_info.leftDown, air_info.rightDown)
+        if is_horizontal and\
+           ((air_info.down and GUI.Button(bottom_button_rect, airGuiContent)) or\
+            (not air_info.down and GUI.Button(bottom_button_rect, blackGuiContent))):
+            surrounding_change = true
+            air_info = Autotile.AirInfo(air_info.left,      air_info.right,
+                                        not air_info.down,  air_info.up,
+                                        air_info.leftUp,    air_info.rightUp,
+                                        air_info.leftDown,  air_info.rightDown)
+        if has_right_bottom_corner and\
+           ((air_info.rightDown and GUI.Button(right_bottom_button_rect, airGuiContent)) or\
+            (not air_info.rightDown and GUI.Button(right_bottom_button_rect, blackGuiContent))):
+            surrounding_change = true
+            air_info = Autotile.AirInfo(air_info.left,     air_info.right,
+                                        air_info.down,     air_info.up,
+                                        air_info.leftUp,   air_info.rightUp,
+                                        air_info.leftDown, not air_info.rightDown)
         if surrounding_change:
             all_autotiles = FindObjectsOfType(Autotile)
             Undo.RegisterUndo(all_autotiles, "Change tile surroundings")
@@ -266,6 +345,49 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         if GUI.Button(down_button_rect, "Bottom") and tile.offsetMode != OffsetMode.Bottom:
             tile.offsetMode = OffsetMode.Bottom
             EditorUtility.SetDirty(tile)
+
+        if is_horizontal and localTransform.localScale.x > 2.0f:
+            if not tile.topScreen:
+                if not air_info.up and GUILayout.Button("Insert top black tile"):
+                    MakeScreenTileChild() do(t):
+                        tile.topScreen = t
+                        t.gameObject.name = "top_black_tile"
+                        t.transform.localPosition = tile.offset + Vector2(0.0f, 2.0f)
+                        t.transform.localScale = Vector2(1.0f, 3.0f)
+                        t.offsetMode = OffsetMode.Bottom
+            elif GUILayout.Button("Remove top black tile"):
+                DestroyImmediate(tile.topScreen.gameObject)
+            if not tile.bottomScreen:
+                if not air_info.down and GUILayout.Button("Insert bottom black tile"):
+                    MakeScreenTileChild() do(t):
+                        tile.bottomScreen = t
+                        t.gameObject.name = "bottom_black_tile"
+                        t.transform.localPosition = tile.offset + Vector2(0.0f, -2.0f)
+                        t.transform.localScale = Vector2(1.0f, 3.0f)
+                        t.offsetMode = OffsetMode.Top
+            elif GUILayout.Button("Remove bottom black tile"):
+                DestroyImmediate(tile.bottomScreen.gameObject)
+        elif is_vertical and localTransform.localScale.y > 2.0f:
+            if not tile.leftScreen:
+                if not air_info.left and GUILayout.Button("Insert left black tile"):
+                    MakeScreenTileChild() do(t):
+                        tile.leftScreen = t
+                        t.gameObject.name = "left_black_tile"
+                        t.transform.localPosition = tile.offset + Vector2(-2.0f, 0.0f)
+                        t.transform.localScale = Vector2(3.0f, 1.0f)
+                        t.offsetMode = OffsetMode.Right
+            elif GUILayout.Button("Remove left black tile"):
+                DestroyImmediate(tile.leftScreen.gameObject)
+            if not tile.rightScreen:
+                if not air_info.right and GUILayout.Button("Insert right black tile"):
+                    MakeScreenTileChild() do(t):
+                        tile.rightScreen = t
+                        t.gameObject.name = "right_black_tile"
+                        t.transform.localPosition = tile.offset + Vector2(2.0f, 0.0f)
+                        t.transform.localScale = Vector2(3.0f, 1.0f)
+                        t.offsetMode = OffsetMode.Left
+            elif GUILayout.Button("Remove right black tile"):
+                DestroyImmediate(tile.rightScreen.gameObject)
 
         serializedObject.ApplyModifiedProperties()
         Refresh(tile)
@@ -324,6 +446,14 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         tile.transform.localPosition.z = 0.0f
         tile.transform.localScale = tile.SuggestScales()
 
+    def ReturnFromNoneScales():
+        x = tile.transform.localScale.x
+        y = tile.transform.localScale.y
+        if x < y:
+            tile.transform.localScale.x = 1.0f
+        else:
+            tile.transform.localScale.y = 1.0f
+
     def OnSceneGUI():
 
         if Event.current.type == EventType.Repaint:
@@ -368,6 +498,17 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                         one_tile.transform.localScale.y -= Event.current.delta.y / 3.0f
                         one_tile.transform.localScale = one_tile.SuggestScales()
                         changed = true
+                    elif one_tile.secondaryTileMode == TileMode.Centric:
+                        if one_tile.offsetMode in (OffsetMode.Bottom, OffsetMode.Top):
+                            one_tile.transform.localScale.y -= Event.current.delta.y / 3.0f
+                            one_tile.Refresh()
+                            one_tile.transform.localScale = one_tile.SuggestScales()
+                            changed = true
+                        elif one_tile.offsetMode in (OffsetMode.Left, OffsetMode.Right):
+                            one_tile.transform.localScale.x -= Event.current.delta.y / 3.0f
+                            one_tile.Refresh()
+                            one_tile.transform.localScale = one_tile.SuggestScales()
+                            changed = true
                     if changed:
                         one_tile.Refresh()
                         one_tile.PushNeighbours()
