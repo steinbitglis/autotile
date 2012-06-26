@@ -26,29 +26,6 @@ static class AutotileMenus:
             mf = t.GetComponent of MeshFilter()
             EditorUtility.SetDirty(mf) if mf
 
-    [MenuItem("Autotile/Upgrade currently selected tile %g")]
-    def UpgradeCurrentAutotile() as Autotile:
-        tile = Selection.activeTransform.GetComponent of Autotile() if Selection.activeTransform
-        if tile and not tile.usesAirInfo:
-            air_info = Autotile.AirInfo(tile.airInfo)
-            tile.SetAndPropagateAirInfo(air_info)
-
-            all_autotiles = GameObject.FindObjectsOfType(Autotile)
-            Undo.RegisterUndo(all_autotiles, "Change tile surroundings")
-            for one_tile as Autotile in all_autotiles:
-                Refresh(one_tile)
-
-    [MenuItem("Autotile/Find old type tile %e")]
-    def UpgradeAutotiles() as Autotile:
-        tiles = GameObject.FindObjectsOfType(Autotile)
-        for t in tiles:
-            unless t.usesAirInfo:
-                (SceneView.sceneViews[0] as SceneView).LookAt(t.transform.position)
-                Selection.activeTransform = t.transform
-                tiles = GameObject.FindObjectsOfType(Autotile)
-                return
-        Debug.Log("You're done")
-
     [MenuItem("GameObject/Create Other/Autotile %t")]
     def CreateAutotile() as Autotile:
         targetPos = Vector3.zero

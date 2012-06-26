@@ -252,28 +252,50 @@ class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenter
     [SerializeField]
     private values = List of AutotileCenterSet()
 
+    smallestKey as int:
+        get:
+            return _smallestKey unless _smallestKey == int.MaxValue
+            for k in keys:
+                _smallestKey = k if k < _smallestKey
+            if _smallestKey == int.MaxValue:
+                if keys.Count:
+                    return keys[0]
+                else:
+                    return 0
+            else:
+                return _smallestKey
+
+    [SerializeField]
+    private _smallestKey = int.MaxValue
+
     [System.NonSerialized]
     private _backingDictionary as Dictionary[of int, AutotileCenterSet]
     private backingDictionary as Dictionary[of int, AutotileCenterSet]:
         get:
             if not _backingDictionary or _backingDictionary.Count != keys.Count:
                 _backingDictionary = Dictionary[of int, AutotileCenterSet]()
+                _smallestKey = int.MaxValue
                 for i in range(values.Count):
+                    _smallestKey = keys[i] if keys[i] < _smallestKey
                     _backingDictionary[keys[i]] = values[i]
             return _backingDictionary
 
     public def Remove(index as int) as bool:
+        if _smallestKey == index:
+            _smallestKey = int.MaxValue
         self.backingDictionary.Remove(index)
-        for i in range(values.Count):
-            if keys[i] == index:
+        for i, key as int in enumerate(keys):
+            _smallestKey = key if key < _smallestKey
+            if key == index:
                 keys.RemoveAt(i)
                 values.RemoveAt(i)
-                return true;
-        return false;
+                was_found = true
+        return was_found
 
     self[index as int] as AutotileCenterSet:
         set:
-            self.backingDictionary[index] = value;
+            _smallestKey = index if index < _smallestKey
+            self.backingDictionary[index] = value
             for i in range(values.Count):
                 if keys[i] == index:
                     values[i] = value

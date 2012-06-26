@@ -20,6 +20,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     useBoxColliderMarginTopProp    as SerializedProperty
 
     private prev_pivot_mode as PivotMode
+    private prev_tile_anathomy as AutotileAnathomy
     private blackAirInfo = Autotile.AirInfoState(false, false, false, false,false, false, false, false)
 
     def OnEnable():
@@ -63,8 +64,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         pass
 
     def GetPreview(t as Tile, tileSize as int, source as Texture2D, result as Texture2D):
-        fullTile = Texture2D(tileSize, tileSize, TextureFormat.ARGB32, false)
-        fullTile.SetPixels(source.GetPixels(t.atlasLocation.xMin * source.width, t.atlasLocation.yMin * source.height, tileSize, tileSize))
+        w = t.atlasLocation.width * source.width
+        h = t.atlasLocation.height * source.height
+        fullTile = Texture2D(w, h, TextureFormat.ARGB32, false)
+        fullTile.SetPixels(source.GetPixels(t.atlasLocation.xMin * source.width, t.atlasLocation.yMin * source.height, w, h))
         if t.flipped:
             ourFlip = ((t.direction + 1) cast int) cast TextureScaleFlip
         if t.rotated:
@@ -79,12 +82,18 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
            (try_again or\
             not tile.preview or\
             tile.previewTileMode != tile.tileMode or\
-            not tile.previewAirInfo.Equals(air_info)):
+            not tile.previewAirInfo.Equals(air_info) or\
+            not tile.previewAnathomy.Equals(prev_tile_anathomy)):
 
             try:
                 try_again = false
                 tile.previewTileMode = tile.tileMode
                 tile.previewAirInfo  = air_info
+
+                c_w  = tile.getCenterLength() * 30 if tile.tileMode == TileMode.Horizontal
+                c_h  = tile.getCenterLength() * 30 if tile.tileMode == TileMode.Vertical
+
+                tile.previewAnathomy = AutotileAnathomy(prev_tile_anathomy)
 
                 ts = AutotileConfig.config.sets[tile.tilesetKey]
                 unless ts.material:
@@ -96,25 +105,54 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     Debug.LogError("The material $(ts.material) did not have a texture to preview")
                     return false
                 mt = ts.material.mainTexture as Texture2D
-                nextPreview = Texture2D(60, 60, TextureFormat.ARGB32, false)
-                nextPreview.SetPixels32(array(Color32, 3600))
+
+                full_w = c_w
+                left_w = 30 if tile.previewAnathomy.drawsLeft
+                full_w += left_w
+                full_w += 30 if tile.previewAnathomy.drawsRight
+
+                full_h = c_h
+                bottom_h = 30 if tile.previewAnathomy.drawsBottom
+                full_h += bottom_h
+                full_h += 30 if tile.previewAnathomy.drawsTop
+
+                nextPreview = Texture2D(full_w, full_h, TextureFormat.ARGB32, false)
+                nextPreview.SetPixels32(array(Color32, full_w * full_h))
                 nextPreview.hideFlags = HideFlags.DontSave
                 DestroyImmediate(tile.preview)
                 if tile.tileMode == TileMode.Horizontal:
                     preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
-                    GetPreview(tile.getLeftCorner(), ts.tileSize, mt, preview)
-                    nextPreview.SetPixels(0, 15, 30, 30, preview.GetPixels())
-                    GetPreview(tile.getRightCorner(), ts.tileSize, mt, preview)
-                    nextPreview.SetPixels(30, 15, 30, 30, preview.GetPixels())
+                    if tile.previewAnathomy.drawsLeft:
+                        GetPreview(tile.getLeftCorner(), ts.tileSize, mt, preview)
+                        nextPreview.SetPixels(0, 15, 30, 30, preview.GetPixels())
+                    if c_w:
+                        DestroyImmediate(preview)
+                        preview = Texture2D(c_w, 30, TextureFormat.ARGB32, false)
+                        GetPreview(tile.getCenterPiece(), ts.tileSize, mt, preview)
+                        nextPreview.SetPixels(left_w, 15, c_w, 30, preview.GetPixels())
+                        DestroyImmediate(preview)
+                        preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                    if tile.previewAnathomy.drawsRight:
+                        GetPreview(tile.getRightCorner(), ts.tileSize, mt, preview)
+                        nextPreview.SetPixels(left_w + c_w, 15, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
                     DestroyImmediate(preview)
                 elif tile.tileMode == TileMode.Vertical:
                     preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
-                    GetPreview(tile.getTopCorner(), ts.tileSize, mt, preview)
-                    nextPreview.SetPixels(15, 30, 30, 30, preview.GetPixels())
-                    GetPreview(tile.getBottomCorner(), ts.tileSize, mt, preview)
-                    nextPreview.SetPixels(15, 0, 30, 30, preview.GetPixels())
+                    if tile.previewAnathomy.drawsTop:
+                        GetPreview(tile.getTopCorner(), ts.tileSize, mt, preview)
+                        nextPreview.SetPixels(15, bottom_h + c_h, 30, 30, preview.GetPixels())
+                    if c_h:
+                        DestroyImmediate(preview)
+                        preview = Texture2D(30, c_h, TextureFormat.ARGB32, false)
+                        GetPreview(tile.getCenterPiece(), ts.tileSize, mt, preview)
+                        nextPreview.SetPixels(15, bottom_h, 30, c_h, preview.GetPixels())
+                        DestroyImmediate(preview)
+                        preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                    if tile.previewAnathomy.drawsBottom:
+                        GetPreview(tile.getBottomCorner(), ts.tileSize, mt, preview)
+                        nextPreview.SetPixels(15, 0, 30, 30, preview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
                     DestroyImmediate(preview)
@@ -210,18 +248,49 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             tile.ResetAllConnections()
             Refresh(tile)
 
-        offset_grid = GUILayoutUtility.GetRect(175.0f, 140.0f)
-        GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 5.0f, 200.0f, 15.0f), "Surroundings")
+        left_c   = tile.DrawsLeftCorner()
+        right_c  = tile.DrawsRightCorner()
+        bottom_c = tile.DrawsBottomCorner()
+        top_c    = tile.DrawsTopCorner()
 
-        left_top_button_rect     = Rect(offset_grid.x + 20.0f +  5.0f, offset_grid.y + 20.0f +  5.0f, 30.0f, 30.0f)
-        top_button_rect          = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f +  5.0f, 30.0f, 30.0f)
-        right_top_button_rect    = Rect(offset_grid.x + 20.0f + 93.0f, offset_grid.y + 20.0f +  5.0f, 30.0f, 30.0f)
-        left_button_rect         = Rect(offset_grid.x + 20.0f +  5.0f, offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
-        center_rect              = Rect(offset_grid.x + 20.0f + 34.0f, offset_grid.y + 20.0f + 34.0f, 60.0f, 60.0f)
-        right_button_rect        = Rect(offset_grid.x + 20.0f + 93.0f, offset_grid.y + 20.0f + 49.0f, 30.0f, 30.0f)
-        left_bottom_button_rect  = Rect(offset_grid.x + 20.0f +  5.0f, offset_grid.y + 20.0f + 93.0f, 30.0f, 30.0f)
-        bottom_button_rect       = Rect(offset_grid.x + 20.0f + 49.0f, offset_grid.y + 20.0f + 93.0f, 30.0f, 30.0f)
-        right_bottom_button_rect = Rect(offset_grid.x + 20.0f + 93.0f, offset_grid.y + 20.0f + 93.0f, 30.0f, 30.0f)
+        left_w   = 30 if left_c
+        right_w  = 30 if right_c
+        bottom_h = 30 if bottom_c
+        top_h    = 30 if top_c
+
+        left_gui_w_off   = 44 if left_c
+        right_gui_w_off  = left_gui_w_off
+        right_gui_w_off  += 44 if right_c
+        top_gui_h_off    = 44 if top_c
+        bottom_gui_h_off = top_gui_h_off
+        bottom_gui_h_off += 44 if bottom_c
+        center_gui_w_off = 14
+        center_gui_w_off += 15 if left_c
+        center_gui_h_off = 14
+        center_gui_h_off += 15 if top_c
+
+        c_half_w  = tile.getCenterLength() * 15 if tile.tileMode == TileMode.Horizontal
+        c_w       = 2 * c_half_w
+        c_half_h  = tile.getCenterLength() * 15 if tile.tileMode == TileMode.Vertical
+        c_h       = 2 * c_half_h
+
+        center_c = true if c_w or c_h
+        prev_tile_anathomy = AutotileAnathomy(left_c, right_c, bottom_c, top_c, center_c)
+
+        offset_grid = GUILayoutUtility.GetRect(115.0f + left_w + c_w + right_w, 80.0f + top_h + c_h + bottom_h)
+        GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 5.0f, 200.0f, 15.0f), "Surroundings")
+        o_x = offset_grid.x + 25.0f
+        o_y = offset_grid.y + 25.0f
+
+        left_top_button_rect     = Rect(o_x + 0.0f                      , o_y                            , 30.0f, 30.0f)
+        top_button_rect          = Rect(o_x + left_gui_w_off + c_half_w , o_y                            , 30.0f, 30.0f)
+        right_top_button_rect    = Rect(o_x + right_gui_w_off + c_w     , o_y                            , 30.0f, 30.0f)
+        left_button_rect         = Rect(o_x + 0.0f                      , o_y + top_gui_h_off + c_half_h , 30.0f, 30.0f)
+        center_rect              = Rect(o_x + center_gui_w_off          , o_y + center_gui_h_off         , left_w + c_w + right_w, bottom_h + c_h + top_h)
+        right_button_rect        = Rect(o_x + right_gui_w_off + c_w     , o_y + top_gui_h_off + c_half_h , 30.0f, 30.0f)
+        left_bottom_button_rect  = Rect(o_x + 0.0f                      , o_y + bottom_gui_h_off + c_h   , 30.0f, 30.0f)
+        bottom_button_rect       = Rect(o_x + left_gui_w_off + c_half_w , o_y + bottom_gui_h_off + c_h   , 30.0f, 30.0f)
+        right_bottom_button_rect = Rect(o_x + right_gui_w_off + c_w     , o_y + bottom_gui_h_off + c_h   , 30.0f, 30.0f)
 
         air_info_state = tile.airInfo
         air_info = Autotile.AirInfo(air_info_state)
@@ -230,18 +299,14 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         is_horizontal = tile.tileMode == TileMode.Horizontal
         is_vertical = tile.tileMode == TileMode.Vertical
         is_none = tile.tileMode == TileMode.None
-        has_left_corner   = is_centric or is_horizontal and tile.DrawsLeftCorner()
-        has_right_corner  = is_centric or is_horizontal and tile.DrawsRightCorner()
-        has_bottom_corner = is_centric or is_vertical and tile.DrawsBottomCorner()
-        has_top_corner    = is_centric or is_vertical and tile.DrawsTopCorner()
+        has_left_corner   = is_centric or is_horizontal and left_c
+        has_right_corner  = is_centric or is_horizontal and right_c
+        has_bottom_corner = is_centric or is_vertical and bottom_c
+        has_top_corner    = is_centric or is_vertical and top_c
         has_left_top_corner = is_none or has_left_corner or has_top_corner
         has_right_top_corner = is_none or has_right_corner or has_top_corner
         has_left_bottom_corner = is_none or has_left_corner or has_bottom_corner
         has_right_bottom_corner = is_none or has_right_corner or has_bottom_corner
-
-        if tile.tileMode == TileMode.None:
-            if true in (air_info.leftUp, air_info.rightUp, air_info.leftDown, air_info.rightDown):
-                ReturnFromNoneScales()
 
         if has_left_top_corner and\
            ((air_info.leftUp and GUI.Button(left_top_button_rect, airGuiContent)) or\
@@ -276,6 +341,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                                         air_info.down,     air_info.up,
                                         air_info.leftUp,   air_info.rightUp,
                                         air_info.leftDown, air_info.rightDown)
+
         if PopulatePreview(air_info_state):
             GUI.DrawTexture(center_rect, tile.preview)
 
@@ -313,8 +379,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                                         air_info.leftUp,   air_info.rightUp,
                                         air_info.leftDown, not air_info.rightDown)
 
-        if not tile.usesAirInfo and GUILayout.Button("Upgrade without change (ctrl+u)"):
-            surrounding_change = true
+        if tile.tileMode == TileMode.None:
+            if true in (air_info.leftUp, air_info.rightUp, air_info.leftDown, air_info.rightDown):
+                ReturnFromNoneScales()
 
         if surrounding_change:
             all_autotiles = FindObjectsOfType(Autotile)
@@ -356,7 +423,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     MakeScreenTileChild() do(t):
                         tile.topScreen = t
                         t.gameObject.name = "top_black_tile"
-                        t.transform.localPosition = tile.offset + Vector2(0.0f, 2.0f)
+                        t.transform.localPosition = tile.offset + Vector2(0.0f, 1.999f)
                         t.transform.localScale = Vector2(1.0f, 3.0f)
                         t.offsetMode = OffsetMode.Bottom
             elif GUILayout.Button("Remove top black tile"):
@@ -366,7 +433,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     MakeScreenTileChild() do(t):
                         tile.bottomScreen = t
                         t.gameObject.name = "bottom_black_tile"
-                        t.transform.localPosition = tile.offset + Vector2(0.0f, -2.0f)
+                        t.transform.localPosition = tile.offset + Vector2(0.0f, -1.999f)
                         t.transform.localScale = Vector2(1.0f, 3.0f)
                         t.offsetMode = OffsetMode.Top
             elif GUILayout.Button("Remove bottom black tile"):
@@ -377,7 +444,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     MakeScreenTileChild() do(t):
                         tile.leftScreen = t
                         t.gameObject.name = "left_black_tile"
-                        t.transform.localPosition = tile.offset + Vector2(-2.0f, 0.0f)
+                        t.transform.localPosition = tile.offset + Vector2(-1.999f, 0.0f)
                         t.transform.localScale = Vector2(3.0f, 1.0f)
                         t.offsetMode = OffsetMode.Right
             elif GUILayout.Button("Remove left black tile"):
@@ -387,7 +454,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     MakeScreenTileChild() do(t):
                         tile.rightScreen = t
                         t.gameObject.name = "right_black_tile"
-                        t.transform.localPosition = tile.offset + Vector2(2.0f, 0.0f)
+                        t.transform.localPosition = tile.offset + Vector2(1.999f, 0.0f)
                         t.transform.localScale = Vector2(3.0f, 1.0f)
                         t.offsetMode = OffsetMode.Left
             elif GUILayout.Button("Remove right black tile"):
@@ -458,13 +525,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         else:
             tile.transform.localScale.y = 1.0f
 
-    private do_autotile_upgrades as bool
     def OnSceneGUI():
-
-        if do_autotile_upgrades:
-            do_autotile_upgrades = false
-            AutotileMenus.UpgradeAutotiles()
-
         if Event.current.type == EventType.Repaint:
             for t in FindObjectsOfType(Autotile):
                 Refresh(t)

@@ -41,6 +41,35 @@ enum SqueezeMode:
     Clip
     Scale
 
+class AutotileAnathomy:
+
+    public drawsLeft as bool
+    public drawsRight as bool
+    public drawsBottom as bool
+    public drawsTop as bool
+    public drawsCenter as bool
+
+    def constructor(left as bool, right as bool, bottom as bool, top as bool, center as bool):
+        drawsLeft   = left
+        drawsRight  = right
+        drawsBottom = bottom
+        drawsTop    = top
+        drawsCenter = center
+
+    def constructor(other as AutotileAnathomy):
+        drawsLeft   = other.drawsLeft
+        drawsRight  = other.drawsRight
+        drawsBottom = other.drawsBottom
+        drawsTop    = other.drawsTop
+        drawsCenter = other.drawsCenter
+
+    def Equals(other as AutotileAnathomy):
+        return other.drawsLeft   == drawsLeft and\
+               other.drawsRight  == drawsRight and\
+               other.drawsBottom == drawsBottom and\
+               other.drawsTop    == drawsTop and\
+               other.drawsCenter == drawsCenter
+
 class AutotileConnections (Generic.IEnumerable[of Autotile]):
 
     public left as Autotile
@@ -204,6 +233,8 @@ class Autotile (MonoBehaviour):
     public previewTileMode as TileMode
     [System.NonSerialized]
     public previewAirInfo as AirInfoState
+    [System.NonSerialized]
+    public previewAnathomy as AutotileAnathomy
 
     public leftScreen as Autotile
     public rightScreen as Autotile
@@ -302,57 +333,12 @@ class Autotile (MonoBehaviour):
 
     airInfo as AirInfoState:
         set:
-            usesAirInfo = true
             _airInfo = AirInfo(value)
-            UpdateFaces()
         get:
-            if usesAirInfo:
-                return AirInfoState(_airInfo)
-            else:
-                # Keep this until horizontalFace and verticalFace are wiped out
-                # This converts from the old format to the new 9-point format
-                # b-compatibility
-                if tileMode == TileMode.Horizontal:
-                    ul = verticalFace in (VerticalFace.Double, VerticalFace.Left)
-                    ur = verticalFace in (VerticalFace.Double, VerticalFace.Right)
-                    dl = ul
-                    dr = ur
-                else:
-                    ul = horizontalFace in (HorizontalFace.Double, HorizontalFace.Up)
-                    ur = ul
-                    dl = horizontalFace in (HorizontalFace.Double, HorizontalFace.Down)
-                    dr = dl
-                return AirInfoState(horizontalFace in (HorizontalFace.Double, HorizontalFace.Up),
-                                    horizontalFace in (HorizontalFace.Double, HorizontalFace.Down),
-                                    verticalFace in (VerticalFace.Double, VerticalFace.Left),
-                                    verticalFace in (VerticalFace.Double, VerticalFace.Right),
-                                    ul, ur, dl, dr)
-
-    def UpdateFaces():
-        if_00_01_10_11 _airInfo.down, _airInfo.up:
-            horizontalFace = HorizontalFace.None
-            horizontalFace = HorizontalFace.Up
-            horizontalFace = HorizontalFace.Down
-            horizontalFace = HorizontalFace.Double
-        if_00_01_10_11 _airInfo.left, _airInfo.right:
-            verticalFace = VerticalFace.None
-            verticalFace = VerticalFace.Right
-            verticalFace = VerticalFace.Left
-            verticalFace = VerticalFace.Double
-
-    def UpdateAirInfo(f as callable):
-        f()
-        UpdateFaces()
+            return AirInfoState(_airInfo)
 
     [SerializeField]
     private _airInfo = AirInfo(true, true, true, true, true, true, true, true)
-
-    #----Kept for b-compatibility reasons----
-    public horizontalFace = HorizontalFace.Double
-    public verticalFace = VerticalFace.Double
-    [SerializeField]
-    public usesAirInfo as bool
-    #----------------------------------------
 
     public offset as Vector3
     [SerializeField]
@@ -362,16 +348,10 @@ class Autotile (MonoBehaviour):
     private applied_air_info = AirInfoState(true, true, true, true, true, true, true, true)
     [SerializeField]
     private applied_tileset_key = ""
-    #----Kept for b-compatibility reasons----
-    [SerializeField]
-    private applied_horizontal_face = HorizontalFace.Up
-    [SerializeField]
-    private applied_vertical_face = VerticalFace.Left
-    [SerializeField]
-    private applied_uses_air_info as bool
-    #----------------------------------------
     [SerializeField]
     private applied_scale = Vector3.one
+    [System.NonSerialized]
+    private applied_non_serialized_scale = Vector3.one
     [SerializeField]
     private applied_discrete_width = 1
     [SerializeField]
@@ -432,12 +412,8 @@ class Autotile (MonoBehaviour):
 
     def Awake():
         ifdef UNITY_EDITOR:
-            if tileMode == TileMode.Centric:
-                for c in connections:
-                    dont_adapt_new_air_model = true if c
-                if not dont_adapt_new_air_model:
-                    applied_uses_air_info = usesAirInfo = true
             unless Application.isPlaying:
+                applied_non_serialized_scale = applied_scale
                 mf = GetComponent of MeshFilter()
                 sm = mf.sharedMesh
                 if sm:
@@ -570,75 +546,61 @@ class Autotile (MonoBehaviour):
 
     # ---------- Horizontal Connections ---------- #
     def SetLeftEnd(down as bool, up as bool):
-        UpdateAirInfo() do():
-            _airInfo.leftDown = down;
-            _airInfo.leftUp = up;
+        _airInfo.leftDown = down;
+        _airInfo.leftUp = up;
 
     def SetRightEnd(down as bool, up as bool):
-        UpdateAirInfo() do():
-            _airInfo.rightDown = down;
-            _airInfo.rightUp = up;
+        _airInfo.rightDown = down;
+        _airInfo.rightUp = up;
 
     def SetBottomLeftFace(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.leftDown = left;
-            _airInfo.down = right;
+        _airInfo.leftDown = left;
+        _airInfo.down = right;
 
     def SetTopLeftFace(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.leftUp = left;
-            _airInfo.up = right;
+        _airInfo.leftUp = left;
+        _airInfo.up = right;
 
     def SetHorizontalFace(bottom as bool, top as bool):
-        UpdateAirInfo() do():
-            _airInfo.down = bottom;
-            _airInfo.up = top;
+        _airInfo.down = bottom;
+        _airInfo.up = top;
 
     def SetBottomRightFace(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.down = left;
-            _airInfo.rightDown = right;
+        _airInfo.down = left;
+        _airInfo.rightDown = right;
 
     def SetTopRightFace(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.up = left;
-            _airInfo.rightUp = right;
+        _airInfo.up = left;
+        _airInfo.rightUp = right;
 
     # ----------- Vertical Connections ----------- #
     def SetTopEnd(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.leftUp = left;
-            _airInfo.rightUp = right;
+        _airInfo.leftUp = left;
+        _airInfo.rightUp = right;
 
     def SetBottomEnd(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.leftDown = left;
-            _airInfo.rightDown = right;
+        _airInfo.leftDown = left;
+        _airInfo.rightDown = right;
 
     def SetLeftBottomFace(down as bool, up as bool):
-        UpdateAirInfo() do():
-            _airInfo.leftDown = down;
-            _airInfo.left = up;
+        _airInfo.leftDown = down;
+        _airInfo.left = up;
 
     def SetRightBottomFace(down as bool, up as bool):
-        UpdateAirInfo() do():
-            _airInfo.rightDown = down;
-            _airInfo.right = up;
+        _airInfo.rightDown = down;
+        _airInfo.right = up;
 
     def SetVerticalFace(left as bool, right as bool):
-        UpdateAirInfo() do():
-            _airInfo.left = left;
-            _airInfo.right = right;
+        _airInfo.left = left;
+        _airInfo.right = right;
 
     def SetLeftTopFace(down as bool, up as bool):
-        UpdateAirInfo() do():
-            _airInfo.left = down;
-            _airInfo.leftUp = up;
+        _airInfo.left = down;
+        _airInfo.leftUp = up;
 
     def SetRightTopFace(down as bool, up as bool):
-        UpdateAirInfo() do():
-            _airInfo.right = down;
-            _airInfo.rightUp = up;
+        _airInfo.right = down;
+        _airInfo.rightUp = up;
     # -------------------------------------------- #
 
 
@@ -1084,6 +1046,7 @@ class Autotile (MonoBehaviour):
         mf.sharedMesh.triangles = Autotile.doubleTriangles
         mf.sharedMesh.uv = Autotile.TileUVs(left) + Autotile.TileUVs(right)
         mf.sharedMesh.RecalculateNormals()
+        mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
         AdjustBoxCollider()
 
@@ -1149,22 +1112,22 @@ class Autotile (MonoBehaviour):
             left = getBottomCorner() if draw_first_corner
             right = getTopCorner() if draw_last_corner
 
-        if draw_first_corner:
-            if draw_last_corner:
-                spareSpace = width - 2.0f
-            else:
-                spareSpace = width - 1.0f
-        elif draw_last_corner:
-            spareSpace = width - 1.0f
-        else:
+        if_00_01_10_11 draw_first_corner, draw_last_corner:
             spareSpace = width
+            spareSpace = width - 1.0f
+            spareSpace = width - 1.0f
+            spareSpace = width - 2.0f
+
+        smallestKey = AutotileConfig.config.sets[tilesetKey].centerSets.smallestKey
 
         if black_center:
             centerUnits = 1
         elif squeezeMode == SqueezeMode.Clip:
             centerUnits = Mathf.Ceil(spareSpace) cast int
         else:
-            centerUnits = Mathf.Round(spareSpace) cast int
+            centerUnits = smallestKey * Mathf.Round(spareSpace / smallestKey) cast int
+            centerUnits = Mathf.Max(smallestKey, centerUnits)
+
         cornerSize = 1f / width
 
         if draw_first_corner:
@@ -1183,7 +1146,6 @@ class Autotile (MonoBehaviour):
         else:
             lastSplit =   0.5f
 
-
         if squeezeMode == SqueezeMode.Clip:
             splitWidth = Mathf.Ceil(spareSpace) / (width * centerUnits)
         else:
@@ -1197,11 +1159,11 @@ class Autotile (MonoBehaviour):
             max_splits_to_use = centerUnits - currentSplitIndex
             tileWidth = ctEnumerator.Current.Key
             tile = ctEnumerator.Current.Value
-            if tileWidth > max_splits_to_use:
+            if tileWidth > max_splits_to_use and not tileWidth == smallestKey:
                 enumeratorHealthy = ctEnumerator.MoveNext()
             else:
                 currentSplitIndex += tileWidth
-                if currentSplitIndex == centerUnits:
+                if currentSplitIndex >= centerUnits:
                     if not black_center and squeezeMode == SqueezeMode.Clip:
                         fractionOfTile = (lastSplit - currentSplit) / (splitWidth * tileWidth)
                     else:
@@ -1226,6 +1188,7 @@ class Autotile (MonoBehaviour):
         mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
         mf.sharedMesh.uv = uvs
         mf.sharedMesh.RecalculateNormals()
+        mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
         AdjustBoxCollider()
 
@@ -1242,6 +1205,7 @@ class Autotile (MonoBehaviour):
         mf.sharedMesh.triangles = Autotile.doubleTriangles
         mf.sharedMesh.uv = Autotile.TileUVs(bottom) + Autotile.TileUVs(top)
         mf.sharedMesh.RecalculateNormals()
+        mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
         AdjustBoxCollider()
 
@@ -1259,6 +1223,7 @@ class Autotile (MonoBehaviour):
             mf.sharedMesh.triangles = Autotile.singleTriangles
             mf.sharedMesh.uv = uvs
             mf.sharedMesh.RecalculateNormals()
+            mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
         AdjustBoxCollider()
 
@@ -1293,23 +1258,19 @@ class Autotile (MonoBehaviour):
                tileMode == TileMode.Centric
 
     def CornersNeeded() as int:
-        if tileMode == TileMode.Horizontal and not CanScaleHorizontalyToCentric() or\
-           tileMode == TileMode.Vertical   and not CanScaleVerticalyToCentric():
-            return 2
-        elif tileMode == TileMode.Horizontal and\
-            connections.left and connections.right:
-            for i in IndexSet.up_down_face:
-                if connections[i]:
-                    return 1
-            return 0
-        elif tileMode == TileMode.Vertical and\
-            connections.up and connections.down:
-            for i in IndexSet.left_right_face:
-                if connections[i]:
-                    return 1
-            return 0
-        else:
+        h_corners = 1 if DrawsLeftCorner()
+        h_corners += 1 if DrawsRightCorner()
+        v_corners = 1 if DrawsBottomCorner()
+        v_corners += 1 if DrawsTopCorner()
+
+        if tileMode == TileMode.Horizontal:
+            return h_corners
+        elif tileMode == TileMode.Vertical:
+            return v_corners
+        elif h_corners or v_corners:
             return 1
+        else:
+            return 0
 
     public class AirInfo:
         #                                       X_____X
@@ -1411,303 +1372,105 @@ class Autotile (MonoBehaviour):
             c as Autotile,
             air_bottom_default as bool,
             air_top_default as bool) as string:
-        if usesAirInfo and c and air_bottom_default and air_top_default:
+        if c and air_bottom_default and air_top_default:
             return "d"
-        elif usesAirInfo or not c:
+        else:
             if_00_01_10_11 air_bottom_default, air_top_default:
                 return "b"
                 return "g"
                 return "c"
                 return "a"
-        else:
-            if c.secondaryTileMode == TileMode.Horizontal:
-                hface_directions_cgxn c.horizontalFace:
-                    return "c"
-                    return "g"
-                    return "d"
-                    return "b"
-            elif c.secondaryTileMode == TileMode.Vertical:
-                if c == connections.left:
-                    r_index = connections.reverse[i_left]
-                    upper_reverse_index = i_right_up
-                    mid_reverse_index   = i_right
-                    lower_reverse_index = i_right_down
-                    air_inner = _airInfo.right
-                elif c == connections.right:
-                    r_index = connections.reverse[i_right]
-                    upper_reverse_index = i_left_up
-                    mid_reverse_index   = i_left
-                    lower_reverse_index = i_left_down
-                    air_inner = _airInfo.left
-                elif c == connections.leftDown:
-                    r_index = connections.reverse[i_left_down]
-                    upper_reverse_index = i_right_up
-                    mid_reverse_index   = i_right
-                    lower_reverse_index = i_right_down
-                    air_inner = _airInfo.right
-                elif c == connections.rightDown:
-                    r_index = connections.reverse[i_right_down]
-                    upper_reverse_index = i_left_up
-                    mid_reverse_index   = i_left
-                    lower_reverse_index = i_left_down
-                    air_inner = _airInfo.left
-                elif c == connections.leftUp:
-                    r_index = connections.reverse[i_left_up]
-                    upper_reverse_index = i_right_up
-                    mid_reverse_index   = i_right
-                    lower_reverse_index = i_right_down
-                    air_inner = _airInfo.right
-                elif c == connections.rightUp:
-                    r_index = connections.reverse[i_right_up]
-                    upper_reverse_index = i_left_up
-                    mid_reverse_index   = i_left
-                    lower_reverse_index = i_left_down
-                    air_inner = _airInfo.left
-                else:
-                    fail_connection = true
-                unless fail_connection:
-                    if r_index == upper_reverse_index:
-                        higher_air = _airInfo.up
-                        lower_air = air_inner
-                    elif r_index == mid_reverse_index:
-                        higher_air = _airInfo.up
-                        lower_air = _airInfo.down
-                    elif r_index == lower_reverse_index:
-                        higher_air = air_inner
-                        lower_air = _airInfo.down
-                    if r_index in (upper_reverse_index, mid_reverse_index, lower_reverse_index):
-                        if_00_01_10_11 lower_air, higher_air:
-                            return "b"
-                            return "g"
-                            return "c"
-                            return "d"
 
     def getVerticalConnectionClassification(\
             c as Autotile,
             air_left_default as bool,
             air_right_default as bool) as string:
-        if usesAirInfo and c and air_left_default and air_right_default:
+        if c and air_left_default and air_right_default:
             return "d"
-        elif usesAirInfo or not c:
+        else:
             if_00_01_10_11 air_left_default, air_right_default:
                 return "b"
                 return "r"
                 return "l"
                 return "a"
-        else:
-            if c.secondaryTileMode == TileMode.Vertical:
-                vface_directions_lrxn c.verticalFace:
-                    return "l"
-                    return "r"
-                    return "d"
-                    return "b"
-            elif c.secondaryTileMode == TileMode.Horizontal:
-                if c == connections.down:
-                    r_index = connections.reverse[i_down]
-                    left_reverse_index = i_up_left
-                    center_reverse_index = i_up
-                    right_reverse_index = i_up_right
-                    air_inner = _airInfo.up
-                elif c == connections.up:
-                    r_index = connections.reverse[i_up]
-                    left_reverse_index = i_down_left
-                    center_reverse_index = i_down
-                    right_reverse_index = i_down_right
-                    air_inner = _airInfo.down
-                elif c == connections.downRight:
-                    r_index = connections.reverse[i_down_right]
-                    left_reverse_index = i_up_left
-                    center_reverse_index = i_up
-                    right_reverse_index = i_up_right
-                    air_inner = _airInfo.up
-                elif c == connections.upRight:
-                    r_index = connections.reverse[i_up_right]
-                    left_reverse_index = i_down_left
-                    center_reverse_index = i_down
-                    right_reverse_index = i_down_right
-                    air_inner = _airInfo.down
-                elif c == connections.downLeft:
-                    r_index = connections.reverse[i_down_left]
-                    left_reverse_index = i_up_left
-                    center_reverse_index = i_up
-                    right_reverse_index = i_up_right
-                    air_inner = _airInfo.up
-                elif c == connections.upLeft:
-                    r_index = connections.reverse[i_up_left]
-                    left_reverse_index = i_down_left
-                    center_reverse_index = i_down
-                    right_reverse_index = i_down_right
-                    air_inner = _airInfo.down
-                else:
-                    fail_connection = true
 
-                unless fail_connection:
-                    if r_index == left_reverse_index:
-                        lefter_air = _airInfo.left
-                        righter_air = air_inner
-                    elif r_index == center_reverse_index:
-                        lefter_air = _airInfo.left
-                        righter_air = _airInfo.right
-                    elif r_index == right_reverse_index:
-                        lefter_air = air_inner
-                        righter_air = _airInfo.right
-                    if r_index in (left_reverse_index, center_reverse_index, right_reverse_index):
-                        if_00_01_10_11 lefter_air, righter_air:
-                            return "b"
-                            return "r"
-                            return "l"
-                            return "d"
-
-    private def booleanToAirOrBlackLetter(test as bool) as string:
-        if test:
-            return "a"
-        else:
-            return "b"
-
-    def getCentricCorner() as Tile:
-        l = booleanToAirOrBlackLetter
-        if usesAirInfo:
-            w = getVerticalConnectionClassification(  connections.up,    _airInfo.leftUp,    _airInfo.rightUp)
-            x = getHorizontalConnectionClassification(connections.right, _airInfo.rightDown, _airInfo.rightUp)
-            y = getVerticalConnectionClassification(  connections.down,  _airInfo.leftDown,  _airInfo.rightDown)
-            z = getHorizontalConnectionClassification(connections.left,  _airInfo.leftDown,  _airInfo.leftUp)
-        else:
-            if connections.up:
-                w = getVerticalConnectionClassification(  connections.up,    _airInfo.left, _airInfo.right)
-            else:
-                w = l(_airInfo.up)
-            if connections.right:
-                x = getHorizontalConnectionClassification(connections.right, _airInfo.down, _airInfo.up)
-            else:
-                x = l(_airInfo.right)
-            if   connections.down:
-                y = getVerticalConnectionClassification(  connections.down,  _airInfo.left, _airInfo.right)
-            else:
-                y = l(_airInfo.down)
-            if connections.left:
-                z = getHorizontalConnectionClassification(connections.left,  _airInfo.down, _airInfo.up)
-            else:
-                z = l(_airInfo.left)
+    def cornerByName(key as string) as Tile:
         try:
-            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+            return AutotileConfig.config.sets[tilesetKey].corners[key]
         except e as Generic.KeyNotFoundException:
             return AutotileConfig.config.sets[tilesetKey].corners.unknown
 
+    def getCenterLength() as int:
+        if tileMode == TileMode.Horizontal:
+            if applied_discrete_width > CornersNeeded():
+                return AutotileConfig.config.sets[tilesetKey].centerSets.smallestKey
+            else:
+                return 0
+        else: # if tileMode == TileMode.Horizontal:
+            if applied_discrete_height > CornersNeeded():
+                return AutotileConfig.config.sets[tilesetKey].centerSets.smallestKey
+            else:
+                return 0
+
+    def getCenterPiece() as Tile:
+        tileSet = AutotileConfig.config.sets[tilesetKey]
+        centerDB = tileSet.centerSets
+        centerSet = centerDB[centerDB.smallestKey]
+        if tileMode == TileMode.Horizontal:
+            if _airInfo.up:
+                if _airInfo.down:
+                    return centerSet.doubleHorizontalFace
+                else:
+                    return centerSet.upFace
+            elif _airInfo.down:
+                return centerSet.downFace
+            else:
+                return tileSet.corners.bbbb
+        else: # if tileMode == TileMode.Horizontal:
+            if _airInfo.left:
+                if _airInfo.right:
+                    return centerSet.doubleVerticalFace
+                else:
+                    return centerSet.leftFace
+            elif _airInfo.right:
+                return centerSet.rightFace
+            else:
+                return tileSet.corners.bbbb
+
+    def getCentricCorner() as Tile:
+        w = getVerticalConnectionClassification(  connections.up,    _airInfo.leftUp,    _airInfo.rightUp)
+        x = getHorizontalConnectionClassification(connections.right, _airInfo.rightDown, _airInfo.rightUp)
+        y = getVerticalConnectionClassification(  connections.down,  _airInfo.leftDown,  _airInfo.rightDown)
+        z = getHorizontalConnectionClassification(connections.left,  _airInfo.leftDown,  _airInfo.leftUp)
+        return cornerByName("$w$x$y$z")
+
     def getRightCorner() as Tile:
-        if usesAirInfo:
-            w = getVerticalConnectionClassification(  connections.upRight,   _airInfo.up,        _airInfo.rightUp)
-            x = getHorizontalConnectionClassification(connections.right,     _airInfo.rightDown, _airInfo.rightUp)
-            y = getVerticalConnectionClassification(  connections.downRight, _airInfo.down,      _airInfo.rightDown)
-            z = HFace()
-        else:
-            w = getVerticalConnectionClassification(connections.upRight,   _airInfo.up,    _airInfo.right)
-            x = getHorizontalConnectionClassification(connections.right,   _airInfo.right, _airInfo.right)
-            y = getVerticalConnectionClassification(connections.downRight, _airInfo.down,  _airInfo.right)
-            hface_directions_cgxn horizontalFace:
-                z = "c"
-                z = "g"
-                z = "d"
-                z = "b"
-        try:
-            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-        except e as Generic.KeyNotFoundException:
-            w = getVerticalConnectionClassification(connections.upRight,   _airInfo.up,    _airInfo.up)
-            x = getHorizontalConnectionClassification(connections.right,   _airInfo.right, _airInfo.right)
-            y = getVerticalConnectionClassification(connections.downRight, _airInfo.down,  _airInfo.down)
-            try:
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-            except e as Generic.KeyNotFoundException:
-                w = getVerticalConnectionClassification(null,   _airInfo.up,    _airInfo.right)
-                x = getHorizontalConnectionClassification(null, _airInfo.right, _airInfo.right)
-                y = getVerticalConnectionClassification(null,   _airInfo.down,  _airInfo.right)
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+        w = getVerticalConnectionClassification(  connections.upRight,   _airInfo.up,        _airInfo.rightUp)
+        x = getHorizontalConnectionClassification(connections.right,     _airInfo.rightDown, _airInfo.rightUp)
+        y = getVerticalConnectionClassification(  connections.downRight, _airInfo.down,      _airInfo.rightDown)
+        z = HFace()
+        return cornerByName("$w$x$y$z")
 
     def getLeftCorner() as Tile:
-        if usesAirInfo:
-            w = getVerticalConnectionClassification(  connections.upLeft,   _airInfo.leftUp,   _airInfo.up)
-            x = HFace()
-            y = getVerticalConnectionClassification(  connections.downLeft, _airInfo.leftDown, _airInfo.down)
-            z = getHorizontalConnectionClassification(connections.left,     _airInfo.leftDown, _airInfo.leftUp)
-        else:
-            w = getVerticalConnectionClassification(connections.upLeft,   _airInfo.left, _airInfo.up)
-            hface_directions_cgxn horizontalFace:
-                x = "c"
-                x = "g"
-                x = "d"
-                x = "b"
-            y = getVerticalConnectionClassification(connections.downLeft, _airInfo.left, _airInfo.down)
-            z = getHorizontalConnectionClassification(connections.left,   _airInfo.left, _airInfo.left)
-        try:
-            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-        except e as Generic.KeyNotFoundException:
-            w = getVerticalConnectionClassification(connections.upLeft,   _airInfo.up,   _airInfo.up)
-            y = getVerticalConnectionClassification(connections.downLeft, _airInfo.down, _airInfo.down)
-            z = getHorizontalConnectionClassification(connections.left,   _airInfo.left, _airInfo.left)
-            try:
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-            except e as Generic.KeyNotFoundException:
-                w = getVerticalConnectionClassification(null,   _airInfo.left, _airInfo.up)
-                y = getVerticalConnectionClassification(null,   _airInfo.left, _airInfo.down)
-                z = getHorizontalConnectionClassification(null, _airInfo.left, _airInfo.left)
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+        w = getVerticalConnectionClassification(  connections.upLeft,   _airInfo.leftUp,   _airInfo.up)
+        x = HFace()
+        y = getVerticalConnectionClassification(  connections.downLeft, _airInfo.leftDown, _airInfo.down)
+        z = getHorizontalConnectionClassification(connections.left,     _airInfo.leftDown, _airInfo.leftUp)
+        return cornerByName("$w$x$y$z")
 
     def getTopCorner() as Tile:
-        if usesAirInfo:
-            w = getVerticalConnectionClassification(  connections.up,      _airInfo.leftUp, _airInfo.rightUp)
-            x = getHorizontalConnectionClassification(connections.rightUp, _airInfo.right,  _airInfo.rightUp)
-            y = VFace()
-            z = getHorizontalConnectionClassification(connections.leftUp,  _airInfo.left,   _airInfo.leftUp)
-        else:
-            w = getVerticalConnectionClassification(connections.up,        _airInfo.up,    _airInfo.up)
-            x = getHorizontalConnectionClassification(connections.rightUp, _airInfo.right, _airInfo.up)
-            vface_directions_lrxn verticalFace:
-                y = "l"
-                y = "r"
-                y = "d"
-                y = "b"
-            z = getHorizontalConnectionClassification(connections.leftUp,  _airInfo.left, _airInfo.up)
-        try:
-            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-        except e as Generic.KeyNotFoundException:
-            w = getVerticalConnectionClassification(connections.up,        _airInfo.up,    _airInfo.up)
-            x = getHorizontalConnectionClassification(connections.rightUp, _airInfo.right, _airInfo.right)
-            z = getHorizontalConnectionClassification(connections.leftUp,  _airInfo.left,  _airInfo.left)
-            try:
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-            except e as Generic.KeyNotFoundException:
-                w = getVerticalConnectionClassification(null,   _airInfo.up, _airInfo.up)
-                x = getHorizontalConnectionClassification(null, _airInfo.right, _airInfo.up)
-                z = getHorizontalConnectionClassification(null, _airInfo.left, _airInfo.up)
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+        w = getVerticalConnectionClassification(  connections.up,      _airInfo.leftUp, _airInfo.rightUp)
+        x = getHorizontalConnectionClassification(connections.rightUp, _airInfo.right,  _airInfo.rightUp)
+        y = VFace()
+        z = getHorizontalConnectionClassification(connections.leftUp,  _airInfo.left,   _airInfo.leftUp)
+        return cornerByName("$w$x$y$z")
 
     def getBottomCorner() as Tile:
-        if usesAirInfo:
-            w = VFace()
-            x = getHorizontalConnectionClassification(connections.rightDown, _airInfo.rightDown, _airInfo.right)
-            y = getVerticalConnectionClassification(  connections.down,      _airInfo.leftDown,  _airInfo.rightDown)
-            z = getHorizontalConnectionClassification(connections.leftDown,  _airInfo.leftDown,  _airInfo.left)
-        else:
-            vface_directions_lrxn verticalFace:
-                w = "l"
-                w = "r"
-                w = "d"
-                w = "b"
-            x = getHorizontalConnectionClassification(connections.rightDown, _airInfo.down, _airInfo.right)
-            y = getVerticalConnectionClassification(connections.down,        _airInfo.down, _airInfo.down)
-            z = getHorizontalConnectionClassification(connections.leftDown,  _airInfo.down, _airInfo.left)
-        try:
-            return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-        except e as Generic.KeyNotFoundException:
-            x = getHorizontalConnectionClassification(connections.rightDown, _airInfo.right, _airInfo.right)
-            y = getVerticalConnectionClassification(connections.down,        _airInfo.down,  _airInfo.down)
-            z = getHorizontalConnectionClassification(connections.leftDown,  _airInfo.left,  _airInfo.left)
-            try:
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
-            except e as Generic.KeyNotFoundException:
-                x = getHorizontalConnectionClassification(null, _airInfo.down, _airInfo.right)
-                y = getVerticalConnectionClassification(null,   _airInfo.down, _airInfo.down)
-                z = getHorizontalConnectionClassification(null, _airInfo.down, _airInfo.left)
-                return AutotileConfig.config.sets[tilesetKey].corners["$w$x$y$z"]
+        w = VFace()
+        x = getHorizontalConnectionClassification(connections.rightDown, _airInfo.rightDown, _airInfo.right)
+        y = getVerticalConnectionClassification(  connections.down,      _airInfo.leftDown,  _airInfo.rightDown)
+        z = getHorizontalConnectionClassification(connections.leftDown,  _airInfo.leftDown,  _airInfo.left)
+        return cornerByName("$w$x$y$z")
 
     def ApplyHorizontal(dim as int):
         try:
@@ -1779,6 +1542,7 @@ class Autotile (MonoBehaviour):
                 applied_discrete_width = x
                 applied_discrete_height = y
                 applied_scale = transform.localScale
+                applied_non_serialized_scale = transform.localScale
                 if x == 1 and y == 1:
                     if CanScaleToCentric():
                         ApplyCentric()
@@ -1790,28 +1554,25 @@ class Autotile (MonoBehaviour):
                     ApplyVertical(y)
                 elif y == 1:
                     ApplyHorizontal(x)
-        if applied_scale != transform.localScale:
+        if applied_scale != transform.localScale or\
+           applied_non_serialized_scale != transform.localScale:
             unsaved = true
             if IsNoneTile():
                 applied_scale = transform.localScale
+                applied_non_serialized_scale = transform.localScale
             else:
                 if x == 1 and y >= 2:
                     ApplyVertical(y)
                     applied_scale = transform.localScale
+                    applied_non_serialized_scale = transform.localScale
                 elif y == 1 and x >= 2:
                     ApplyHorizontal(x)
                     applied_scale = transform.localScale
+                    applied_non_serialized_scale = transform.localScale
 
     def ApplyAirInfo():
         unless applied_air_info.Equals(_airInfo):
             applied_air_info = airInfo
-            dirty = true
-
-    def ApplyFace():
-        #TODO remove function if its not needed
-        if applied_horizontal_face != horizontalFace or applied_vertical_face != verticalFace:
-            applied_horizontal_face = horizontalFace
-            applied_vertical_face = verticalFace
             dirty = true
 
     def SuggestScales() as Vector3:
@@ -1872,20 +1633,12 @@ class Autotile (MonoBehaviour):
             applied_use_box_collider_margins_top    = useBoxColliderMarginTop
             dirty = true
 
-    def ApplyUsesAirInfo():
-        if applied_uses_air_info != usesAirInfo:
-            applied_uses_air_info = usesAirInfo
-            Debug.Log("Upgraded $(gameObject.name) to 9-point air-info model, enjoy!", self)
-            unsaved = true
-
     def Refresh():
         boxCollider = GetComponent of BoxCollider() unless boxCollider
-        ApplyUsesAirInfo()
         ApplyAirInfo()
         ApplyBoxColliderMargin()
         ApplyTilesetKey()
         ApplyOffset()
-        ApplyFace()
         ApplyScale()
 
     [ContextMenu("Force Rebuild")]
