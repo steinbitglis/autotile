@@ -269,11 +269,11 @@ class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenter
     private _smallestKey = int.MaxValue
 
     [System.NonSerialized]
-    private _backingDictionary as Dictionary[of int, AutotileCenterSet]
+    private _backingDictionary = Dictionary[of int, AutotileCenterSet]()
     private backingDictionary as Dictionary[of int, AutotileCenterSet]:
         get:
-            if not _backingDictionary or _backingDictionary.Count != keys.Count:
-                _backingDictionary = Dictionary[of int, AutotileCenterSet]()
+            if _backingDictionary.Count != keys.Count:
+                _backingDictionary.Clear()
                 _smallestKey = int.MaxValue
                 for i in range(values.Count):
                     _smallestKey = keys[i] if keys[i] < _smallestKey
@@ -281,21 +281,23 @@ class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenter
             return _backingDictionary
 
     public def Remove(index as int) as bool:
-        if _smallestKey == index:
-            _smallestKey = int.MaxValue
-        self.backingDictionary.Remove(index)
+        _backingDictionary.Remove(index)
         for i, key as int in enumerate(keys):
-            _smallestKey = key if key < _smallestKey
             if key == index:
                 keys.RemoveAt(i)
                 values.RemoveAt(i)
                 was_found = true
+                break
+        if _smallestKey == index:
+            _smallestKey = int.MaxValue
+            for i in range(values.Count):
+                _smallestKey = keys[i] if keys[i] < _smallestKey
         return was_found
 
     self[index as int] as AutotileCenterSet:
         set:
             _smallestKey = index if index < _smallestKey
-            self.backingDictionary[index] = value
+            _backingDictionary[index] = value
             for i in range(values.Count):
                 if keys[i] == index:
                     values[i] = value

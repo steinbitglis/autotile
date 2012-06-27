@@ -23,8 +23,12 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
     private prev_tile_anathomy as AutotileAnathomy
     private blackAirInfo = Autotile.AirInfoState(false, false, false, false,false, false, false, false)
 
+    private missing_tileset = false
+
     def OnEnable():
         tile = target as Autotile
+
+        missing_tileset = false
 
         airGuiContent = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air3.png", Texture))
         blackGuiContent = GUIContent(AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Icons/Air/air3-black.png", Texture))
@@ -43,12 +47,16 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         Tools.pivotMode = PivotMode.Pivot
 
         for t in FindObjectsOfType(Autotile):
-            ts = AutotileConfig.config.sets[t.tilesetKey]
-            tsm = ts.material if ts
-            mt = tsm.mainTexture if tsm
-            if mt and t.renderer.sharedMaterial != tsm:
-                t.renderer.material = tsm
-                EditorUtility.SetDirty(t.renderer)
+            try:
+                ts = AutotileConfig.config.sets[t.tilesetKey]
+                tsm = ts.material if ts
+                mt = tsm.mainTexture if tsm
+                if mt and t.renderer.sharedMaterial != tsm:
+                    t.renderer.material = tsm
+                    EditorUtility.SetDirty(t.renderer)
+            except e as KeyNotFoundException:
+                missing_tileset = missing_tileset or t == tile
+                Debug.LogError("The key $(t.tilesetKey) was missing in the tileset config")
 
         p = EndSnapshot as EditorApplication.CallbackFunction
         unless EditorApplication.modifierKeysChanged and p in EditorApplication.modifierKeysChanged.GetInvocationList():
@@ -116,8 +124,15 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 full_h += bottom_h
                 full_h += 30 if tile.previewAnathomy.drawsTop
 
-                nextPreview = Texture2D(full_w, full_h, TextureFormat.ARGB32, false)
-                nextPreview.SetPixels32(array(Color32, full_w * full_h))
+                if tile.tileMode == TileMode.Centric:
+                    nextPreview = Texture2D(60, 60, TextureFormat.ARGB32, false)
+                    nextPreview.SetPixels32(array(Color32, 3600))
+                    bottom_h = left_w = 30
+                    full_h = full_w = 60
+                else:
+                    nextPreview = Texture2D(full_w, full_h, TextureFormat.ARGB32, false)
+                    nextPreview.SetPixels32(array(Color32, full_w * full_h))
+
                 nextPreview.hideFlags = HideFlags.DontSave
                 DestroyImmediate(tile.preview)
                 if tile.tileMode == TileMode.Horizontal:
@@ -225,7 +240,13 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     unless t.renderer.sharedMaterial == new_material:
                         t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
                         EditorUtility.SetDirty(t.renderer)
+                    missing_tileset = false
                     Refresh(t) if serializedObject.isEditingMultipleObjects
+
+        if missing_tileset:
+            EditorGUILayout.LabelField("The tileset '$(tile.tilesetKey)' is missing.")
+            EditorGUILayout.LabelField("Full Autotile editor can not display.")
+            return
 
         if serializedObject.isEditingMultipleObjects:
             return
@@ -248,10 +269,13 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             tile.ResetAllConnections()
             Refresh(tile)
 
-        left_c   = tile.DrawsLeftCorner()
-        right_c  = tile.DrawsRightCorner()
-        bottom_c = tile.DrawsBottomCorner()
-        top_c    = tile.DrawsTopCorner()
+        if tile.tileMode == TileMode.Centric:
+            left_c = right_c = bottom_c = top_c = true
+        else:
+            left_c   = tile.DrawsLeftCorner()
+            right_c  = tile.DrawsRightCorner()
+            bottom_c = tile.DrawsBottomCorner()
+            top_c    = tile.DrawsTopCorner()
 
         left_w   = 30 if left_c
         right_w  = 30 if right_c
@@ -473,10 +497,15 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 Handles.DrawAAPolyLine(0.03f, a, b)
 
     def MarginQuad(margin as single, tr as Transform) as (Vector2):
-        margin_w = margin / tr.localScale.x
-        margin_h = margin / tr.localScale.y
-        return (Vector2(-0.5f + margin_w, -0.5f + margin_h), Vector2(-0.5f + margin_w,  0.5f - margin_h),
-                Vector2( 0.5f - margin_w,  0.5f - margin_h), Vector2( 0.5f - margin_w, -0.5f + margin_h),)
+        w = tr.localScale.x
+        h = tr.localScale.y
+        if Mathf.Abs(w) < 0.001f or Mathf.Abs(h) < 0.001f:
+            return (,)
+        else:
+            margin_w = margin / w
+            margin_h = margin / h
+            return (Vector2(-0.5f + margin_w, -0.5f + margin_h), Vector2(-0.5f + margin_w,  0.5f - margin_h),
+                    Vector2( 0.5f - margin_w,  0.5f - margin_h), Vector2( 0.5f - margin_w, -0.5f + margin_h),)
 
     private resizing_tiles = false
     private tiles_to_resize = 0

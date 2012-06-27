@@ -28,23 +28,40 @@ static class AutotileMenus:
 
     [MenuItem("GameObject/Create Other/Autotile %t")]
     def CreateAutotile() as Autotile:
-        targetPos = Vector3.zero
+        target_pos = Vector3.zero
 
         view = SceneView.currentDrawingSceneView
         cameras = view.GetAllSceneCameras()
         ccam = cameras[0] if cameras.Length
+        parent_transform as Transform
         if ccam:
             screenCenterRay = ccam.ScreenPointToRay(Vector3(ccam.pixelWidth / 2f, ccam.pixelHeight / 2f, 0.0f))
-            if screenCenterRay.direction.z > 0f and  screenCenterRay.origin.z < 0f or\
-               screenCenterRay.direction.z < 0f and  screenCenterRay.origin.z > 0f:
+            active_tile = Selection.activeGameObject.GetComponent of Autotile() if Selection.activeGameObject
+            parent_transform = Selection.activeTransform.parent if active_tile
+            if parent_transform:
+                screen_ray_direction = parent_transform.InverseTransformPoint(screenCenterRay.direction + parent_transform.position)
+                screen_ray_origin = parent_transform.InverseTransformPoint(screenCenterRay.origin)
 
-                t = -screenCenterRay.origin.z / screenCenterRay.direction.z
-                targetPos = screenCenterRay.origin + t * screenCenterRay.direction
-                targetPos.z = 0f
+                if screen_ray_direction.z > 0f and  screen_ray_origin.z < 0f or\
+                   screen_ray_direction.z < 0f and  screen_ray_origin.z > 0f:
+
+                    t = -screen_ray_origin.z / screen_ray_direction.z
+                    target_pos = screen_ray_origin + t * screen_ray_direction
+                    target_pos.z = 0f
+                    target_pos = parent_transform.TransformPoint(target_pos)
+            else:
+                if screenCenterRay.direction.z > 0f and  screenCenterRay.origin.z < 0f or\
+                   screenCenterRay.direction.z < 0f and  screenCenterRay.origin.z > 0f:
+
+                    t = -screenCenterRay.origin.z / screenCenterRay.direction.z
+                    target_pos = screenCenterRay.origin + t * screenCenterRay.direction
+                    target_pos.z = 0f
 
         targetObject = GameObject("Autotile")
         target = targetObject.AddComponent of Autotile()
-        targetObject.transform.position = targetPos
+        targetObject.transform.position = target_pos
+        targetObject.transform.parent = parent_transform if parent_transform
+        targetObject.transform.localRotation = Quaternion.identity
         if AutotileConfig.config.sets.Count:
             target.tilesetKey = AutotileConfig.config.sets.FirstKey()
             target.renderer.material = AutotileConfig.config.sets.First().material

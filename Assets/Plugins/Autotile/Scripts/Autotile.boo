@@ -1039,16 +1039,17 @@ class Autotile (MonoBehaviour):
             return result
 
     def ApplyHorizontalTile():
-        left = getLeftCorner()
-        right = getRightCorner()
-        mf = GetComponent of MeshFilter()
-        mf.sharedMesh.vertices = OffsetVertices(Autotile.doubleHorizontalVertices)
-        mf.sharedMesh.triangles = Autotile.doubleTriangles
-        mf.sharedMesh.uv = Autotile.TileUVs(left) + Autotile.TileUVs(right)
-        mf.sharedMesh.RecalculateNormals()
-        mf.sharedMesh.RecalculateBounds()
-        unsavedMesh = true
-        AdjustBoxCollider()
+        unless Mathf.Abs(transform.localScale.x) < 0.001f:
+            left = getLeftCorner()
+            right = getRightCorner()
+            mf = GetComponent of MeshFilter()
+            mf.sharedMesh.vertices = OffsetVertices(Autotile.doubleHorizontalVertices)
+            mf.sharedMesh.triangles = Autotile.doubleTriangles
+            mf.sharedMesh.uv = Autotile.TileUVs(left) + Autotile.TileUVs(right)
+            mf.sharedMesh.RecalculateNormals()
+            mf.sharedMesh.RecalculateBounds()
+            unsavedMesh = true
+            AdjustBoxCollider()
 
     def AdjustBoxCollider():
         if boxCollider:
@@ -1198,16 +1199,17 @@ class Autotile (MonoBehaviour):
             TileDirection.Horizontal)
 
     def ApplyVerticalTile():
-        bottom = getBottomCorner()
-        top = getTopCorner()
-        mf = GetComponent of MeshFilter()
-        mf.sharedMesh.vertices = OffsetVertices(Autotile.doubleVerticalVertices)
-        mf.sharedMesh.triangles = Autotile.doubleTriangles
-        mf.sharedMesh.uv = Autotile.TileUVs(bottom) + Autotile.TileUVs(top)
-        mf.sharedMesh.RecalculateNormals()
-        mf.sharedMesh.RecalculateBounds()
-        unsavedMesh = true
-        AdjustBoxCollider()
+        unless Mathf.Abs(transform.localScale.y) < 0.001f:
+            bottom = getBottomCorner()
+            top = getTopCorner()
+            mf = GetComponent of MeshFilter()
+            mf.sharedMesh.vertices = OffsetVertices(Autotile.doubleVerticalVertices)
+            mf.sharedMesh.triangles = Autotile.doubleTriangles
+            mf.sharedMesh.uv = Autotile.TileUVs(bottom) + Autotile.TileUVs(top)
+            mf.sharedMesh.RecalculateNormals()
+            mf.sharedMesh.RecalculateBounds()
+            unsavedMesh = true
+            AdjustBoxCollider()
 
     def ApplyVerticalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]):
         ApplyLongTile(
@@ -1476,7 +1478,7 @@ class Autotile (MonoBehaviour):
         try:
             tileMode = secondaryTileMode = TileMode.Horizontal
             UseHorizontalConnections()
-            if dim == 2 and (CornersNeeded() == 2 or not squeezeMode == SqueezeMode.Clip):
+            if dim == 2 and not (connections.left or connections.right):
                 ApplyHorizontalTile()
             else:
                 if_00_01_10_11 _airInfo.down, _airInfo.up:
@@ -1493,7 +1495,7 @@ class Autotile (MonoBehaviour):
         try:
             tileMode = secondaryTileMode = TileMode.Vertical
             UseVerticalConnections()
-            if dim == 2 and not (connections.up or connections.down):
+            if dim == 2 and not (connections.down or connections.up):
                 ApplyVerticalTile()
             else:
                 if_00_01_10_11 _airInfo.left, _airInfo.right:
@@ -1516,6 +1518,25 @@ class Autotile (MonoBehaviour):
         except e as System.ArgumentNullException:
             return
 
+    def ApplyClipCentric():
+        if connections.left and connections.right and\
+           not (connections.down or connections.up):
+
+            if_00_01_10_11 _airInfo.down, _airInfo.up:
+                ApplyHorizontalTile(DescendingNoneFaces(tilesetKey))
+                ApplyHorizontalTile(DescendingUpFaces(tilesetKey))
+                ApplyHorizontalTile(DescendingDownFaces(tilesetKey))
+                ApplyHorizontalTile(DescendingDoubleHorizontalFaces(tilesetKey))
+
+        elif connections.down and connections.up and\
+             not (connections.left or connections.right):
+
+            if_00_01_10_11 _airInfo.left, _airInfo.right:
+                ApplyVerticalTile(DescendingNoneFaces(tilesetKey))
+                ApplyVerticalTile(DescendingRightFaces(tilesetKey))
+                ApplyVerticalTile(DescendingLeftFaces(tilesetKey))
+                ApplyVerticalTile(DescendingDoubleVerticalFaces(tilesetKey))
+
     def ApplyNone():
         try:
             tileMode = secondaryTileMode = TileMode.None
@@ -1533,16 +1554,18 @@ class Autotile (MonoBehaviour):
                 x = Mathf.Ceil(transform.localScale.x) cast int
             if secondaryTileMode == TileMode.Vertical and (connections.up or connections.down) or transform.localScale.y > 2.0f:
                 y = Mathf.Ceil(transform.localScale.y) cast int
-        if applied_discrete_width != x or applied_discrete_height != y or dirty:
+        if applied_discrete_width != x and x > 0 or applied_discrete_height != y  and y > 0 or dirty:
             dirty = false
             unsaved = true
+
+            applied_discrete_width = x
+            applied_discrete_height = y
+            applied_scale = transform.localScale
+            applied_non_serialized_scale = transform.localScale
+
             if IsNoneTile():
                 ApplyNone()
             else:
-                applied_discrete_width = x
-                applied_discrete_height = y
-                applied_scale = transform.localScale
-                applied_non_serialized_scale = transform.localScale
                 if x == 1 and y == 1:
                     if CanScaleToCentric():
                         ApplyCentric()
@@ -1554,8 +1577,9 @@ class Autotile (MonoBehaviour):
                     ApplyVertical(y)
                 elif y == 1:
                     ApplyHorizontal(x)
-        if applied_scale != transform.localScale or\
-           applied_non_serialized_scale != transform.localScale:
+        if x > 0 and y > 0 and\
+           (applied_scale != transform.localScale or\
+            applied_non_serialized_scale != transform.localScale):
             unsaved = true
             if IsNoneTile():
                 applied_scale = transform.localScale
@@ -1569,6 +1593,8 @@ class Autotile (MonoBehaviour):
                     ApplyHorizontal(x)
                     applied_scale = transform.localScale
                     applied_non_serialized_scale = transform.localScale
+                elif squeezeMode == SqueezeMode.Clip:
+                    ApplyClipCentric()
 
     def ApplyAirInfo():
         unless applied_air_info.Equals(_airInfo):
