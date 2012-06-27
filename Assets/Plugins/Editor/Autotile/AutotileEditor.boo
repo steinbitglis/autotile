@@ -549,35 +549,38 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             Refresh(tile)
             ccam = Camera.current
             mouseRay = ccam.ScreenPointToRay(Vector3(Event.current.mousePosition.x, ccam.pixelHeight - Event.current.mousePosition.y, 0.0f))
-            if mouseRay.direction.z > 0.0f:
-                t = -mouseRay.origin.z / mouseRay.direction.z
-                mouseWorldPos = mouseRay.origin + t * mouseRay.direction
-
             for one_tile as Autotile in FindObjectsOfType(Autotile):
-                local_mouse = one_tile.transform.InverseTransformPoint(mouseWorldPos)
-                if Mathf.Abs(local_mouse.x - one_tile.offset.x) < 0.5f and\
-                   Mathf.Abs(local_mouse.y - one_tile.offset.y) < 0.5f:
+                one_tile_transform = one_tile.transform
+                mouse_direction = one_tile_transform.InverseTransformPoint(mouseRay.direction + one_tile_transform.position)
+                mouse_origin = one_tile_transform.InverseTransformPoint(mouseRay.origin)
+                if mouse_direction.z > 0.0f:
+                    t = -mouse_origin.z / mouse_direction.z
+                    mouseLocalPos = mouse_origin + t * mouse_direction
+                else:
+                    continue
+                if Mathf.Abs(mouseLocalPos.x - one_tile.offset.x) < 0.5f and\
+                   Mathf.Abs(mouseLocalPos.y - one_tile.offset.y) < 0.5f:
                     if one_tile.tileMode in (TileMode.Horizontal, TileMode.Vertical):
                         one_tile.secondaryTileMode = one_tile.tileMode
                     changed = false
                     if one_tile.secondaryTileMode == TileMode.Horizontal:
-                        one_tile.transform.localScale.x -= Event.current.delta.y / 3.0f
-                        one_tile.transform.localScale = one_tile.SuggestScales()
+                        one_tile_transform.localScale.x -= Event.current.delta.y / 3.0f
+                        one_tile_transform.localScale = one_tile.SuggestScales()
                         changed = true
                     elif one_tile.secondaryTileMode == TileMode.Vertical:
-                        one_tile.transform.localScale.y -= Event.current.delta.y / 3.0f
-                        one_tile.transform.localScale = one_tile.SuggestScales()
+                        one_tile_transform.localScale.y -= Event.current.delta.y / 3.0f
+                        one_tile_transform.localScale = one_tile.SuggestScales()
                         changed = true
                     elif one_tile.secondaryTileMode == TileMode.Centric:
                         if one_tile.offsetMode in (OffsetMode.Bottom, OffsetMode.Top):
-                            one_tile.transform.localScale.y -= Event.current.delta.y / 3.0f
+                            one_tile_transform.localScale.y -= Event.current.delta.y / 3.0f
                             one_tile.Refresh()
-                            one_tile.transform.localScale = one_tile.SuggestScales()
+                            one_tile_transform.localScale = one_tile.SuggestScales()
                             changed = true
                         elif one_tile.offsetMode in (OffsetMode.Left, OffsetMode.Right):
-                            one_tile.transform.localScale.x -= Event.current.delta.y / 3.0f
+                            one_tile_transform.localScale.x -= Event.current.delta.y / 3.0f
                             one_tile.Refresh()
-                            one_tile.transform.localScale = one_tile.SuggestScales()
+                            one_tile_transform.localScale = one_tile.SuggestScales()
                             changed = true
                     if changed:
                         one_tile.Refresh()

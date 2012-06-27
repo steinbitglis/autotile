@@ -441,71 +441,71 @@ class Autotile (MonoBehaviour):
 
     def Update():
         ifdef UNITY_EDITOR:
-            pos = transform.position
+            pos = transform.localPosition
             unless pos.z == 0.0f:
                 pos.z = 0.0f
-                transform.position = pos
+                transform.localPosition = pos
 
     def ConnectionCanReachHorizontaly(c_index as int, worldPoint as Vector3) as bool:
-        p = transform.position
+        wp_local = transform.InverseTransformPoint(worldPoint)
         r_core = IndexSet.right_wing_core
         l_core = IndexSet.left_wing_core
         c_core = IndexSet.non_horizontal
 
         if _offsetMode == OffsetMode.Left:
             if c_index in c_core:
-                return worldPoint.x - (p + Vector3(0.5f, 0.0f)).x > -1e-5f
+                return wp_local.x - Vector3(0.5f, 0.0f).x > -1e-5f
             elif c_index in r_core:
-                return worldPoint.x - (p + Vector3(1.5f, 0.0f)).x > -1e-5f
+                return wp_local.x - Vector3(1.5f, 0.0f).x > -1e-5f
             elif c_index == i_right:
-                return worldPoint.x - (p + Vector3(2.0f, 0.0f)).x > -1e-5f
+                return wp_local.x - Vector3(2.0f, 0.0f).x > -1e-5f
         elif _offsetMode == OffsetMode.Right:
             if c_index in c_core:
-                return worldPoint.x - (p + Vector3(-0.5f, 0.0f)).x > 1e-5f
+                return wp_local.x - Vector3(-0.5f, 0.0f).x > 1e-5f
             elif c_index in l_core:
-                return worldPoint.x - (p + Vector3(-1.5f, 0.0f)).x < 1e-5f
+                return wp_local.x - Vector3(-1.5f, 0.0f).x < 1e-5f
             elif c_index == i_left:
-                return worldPoint.x - (p + Vector3(-2.0f, 0.0f)).x < 1e-5f
+                return wp_local.x - Vector3(-2.0f, 0.0f).x < 1e-5f
         else:
             if c_index in r_core:
-                return worldPoint.x - (p + Vector3(0.5f, 0.0f)).x > -1e-5f
+                return wp_local.x - Vector3(0.5f, 0.0f).x > -1e-5f
             elif c_index == i_right:
-                return worldPoint.x - (p + Vector3(1.0f, 0.0f)).x > -1e-5f
+                return wp_local.x - Vector3(1.0f, 0.0f).x > -1e-5f
             elif c_index in l_core:
-                return worldPoint.x - (p + Vector3(-0.5f, 0.0f)).x < 1e-5f
+                return wp_local.x - Vector3(-0.5f, 0.0f).x < 1e-5f
             elif c_index == i_left:
-                return worldPoint.x - (p + Vector3(-1.0f, 0.0f)).x < 1e-5f
+                return wp_local.x - Vector3(-1.0f, 0.0f).x < 1e-5f
         c_pos = Autotile.ConnectionPosition(self, c_index, 0.0f)
         return Mathf.Abs(worldPoint.x - c_pos.x) < 1e-5f
 
     def ConnectionCanReachVerticaly(c_index as int, worldPoint as Vector3) as bool:
-        p = transform.position
+        wp_local = transform.InverseTransformPoint(worldPoint)
         u_core = IndexSet.up_wing_core
         d_core = IndexSet.down_wing_core
         c_core = IndexSet.non_vertical
         if _offsetMode == OffsetMode.Bottom:
             if c_index in c_core:
-                return worldPoint.y - (p + Vector3(0.0f, 0.5f)).y > -1e-5f
+                return wp_local.y - Vector3(0.0f, 0.5f).y > -1e-5f
             elif c_index in u_core:
-                return worldPoint.y - (p + Vector3(0.0f, 1.5f)).y > -1e-5f
+                return wp_local.y - Vector3(0.0f, 1.5f).y > -1e-5f
             elif c_index == i_up:
-                return worldPoint.y - (p + Vector3(0.0f, 2.0f)).y > -1e-5f
+                return wp_local.y - Vector3(0.0f, 2.0f).y > -1e-5f
         elif _offsetMode == OffsetMode.Top:
             if c_index in c_core:
-                return worldPoint.y - (p + Vector3(0.0f, -0.5f)).y < 1e-5f
+                return wp_local.y - Vector3(0.0f, -0.5f).y < 1e-5f
             elif c_index in d_core:
-                return worldPoint.y - (p + Vector3(0.0f, -1.5f)).y < 1e-5f
+                return wp_local.y - Vector3(0.0f, -1.5f).y < 1e-5f
             elif c_index == i_down:
-                return worldPoint.y - (p + Vector3(0.0f, -2.0f)).y < 1e-5f
+                return wp_local.y - Vector3(0.0f, -2.0f).y < 1e-5f
         else:
             if c_index in u_core:
-                return worldPoint.y - (p + Vector3(0.0f, 0.5f)).y > -1e-5f
+                return wp_local.y - Vector3(0.0f, 0.5f).y > -1e-5f
             elif c_index == i_up:
-                return worldPoint.y - (p + Vector3(0.0f, 1.0f)).y > -1e-5f
+                return wp_local.y - Vector3(0.0f, 1.0f).y > -1e-5f
             elif c_index in d_core:
-                return worldPoint.y - (p + Vector3(0.0f, -0.5f)).y < 1e-5f
+                return wp_local.y - Vector3(0.0f, -0.5f).y < 1e-5f
             elif c_index == i_down:
-                return worldPoint.y - (p + Vector3(0.0f, -1.0f)).y < 1e-5f
+                return wp_local.y - Vector3(0.0f, -1.0f).y < 1e-5f
         c_pos = Autotile.ConnectionPosition(self, c_index, 0.0f)
         return Mathf.Abs(worldPoint.y - c_pos.y) < 1e-5f
 
@@ -886,14 +886,14 @@ class Autotile (MonoBehaviour):
                other.tileMode in connectableTileModes:
 
                 other_t = other.transform
-                other_half_w = other_t.localScale.x / 2.0f
-                other_half_h = other_t.localScale.y / 2.0f
-                local_half_w = transform.localScale.x / 2.0f
-                local_half_h = transform.localScale.y / 2.0f
-                other_p = other.OffsetPosition()
+                other_half_w = 0.5f * other_t.localScale.x / transform.localScale.x
+                other_half_h = 0.5f * other_t.localScale.y / transform.localScale.y
+                local_half_w = 0.5f
+                local_half_h = 0.5f
+                other_p = transform.InverseTransformPoint(other.OffsetPosition())
                 other_x = other_p.x
                 other_y = other_p.y
-                local_p = OffsetPosition()
+                local_p = offset
                 local_x = local_p.x
                 local_y = local_p.y
 
