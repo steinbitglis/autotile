@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: bce760eb78201bd4cbc26c642c53f1fa
+guid: 4adf949955f0be748939b22e2e3248de
 TextureImporter:
   serializedVersion: 2
   mipmaps:
@@ -16,7 +16,7 @@ TextureImporter:
     externalNormalMap: 0
     heightScale: .25
     normalMapFilter: 0
-  isReadable: 1
+  isReadable: 0
   grayScaleToAlpha: 0
   generateCubemap: 0
   textureFormat: -3
