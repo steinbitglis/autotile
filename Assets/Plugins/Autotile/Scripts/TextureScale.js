@@ -55,6 +55,7 @@ class TextureScale {
     private static var h2 : int;
     private static var finishCount : int;
     private static var listener : TextureScaleProgressListener;
+    private static var mutex : Mutex;
 
     static function Point (tex : Texture2D, newWidth : int, newHeight : int) {
         Point (tex, newWidth, newHeight, null);
@@ -94,6 +95,9 @@ class TextureScale {
     }
 
     private static function ThreadedScale (tex : Texture2D, newWidth : int, newHeight : int, result : Texture2D, useBilinear : boolean, transform : TextureScaleTransform) {
+        if (mutex == null) {
+            mutex = new Mutex(false);
+        }
         texColors = tex.GetPixels();
         newColors = new Color[newWidth * newHeight];
         if (useBilinear) {
@@ -122,7 +126,9 @@ class TextureScale {
             } else {
                 PointScale(threadData);
             }
-            while (finishCount < cores);
+            while (finishCount < cores) {
+                Thread.Sleep(1);
+            }
         } else {
             threadData = new ThreadData(0, newHeight, true, transform.flip, transform.rotate);
             if (useBilinear) {
@@ -188,7 +194,9 @@ class TextureScale {
             }
         }
 
+        mutex.WaitOne();
         finishCount++;
+        mutex.ReleaseMutex();
     }
 
     private static function PointScale (threadData : ThreadData) {
@@ -205,7 +213,9 @@ class TextureScale {
             }
         }
 
+        mutex.WaitOne();
         finishCount++;
+        mutex.ReleaseMutex();
     }
 
     private static function ColorLerpUnclamped (c1 : Color, c2 : Color, value : float) : Color {
