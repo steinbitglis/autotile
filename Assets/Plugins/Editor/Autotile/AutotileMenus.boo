@@ -26,21 +26,24 @@ static class AutotileMenus:
             mf = t.GetComponent of MeshFilter()
             EditorUtility.SetDirty(mf) if mf
 
-    [MenuItem("GameObject/Create Other/Autotile %t")]
-    def CreateAutotile() as Autotile:
+    def CurrentTransformParent() as Transform:
+        active_tile = Selection.activeGameObject.GetComponent of Autotile() if Selection.activeGameObject
+        parent_transform = Selection.activeTransform.parent if active_tile
+        return parent_transform
+
+    def NewObjectPos(parent as Transform) as Vector3:
         target_pos = Vector3.zero
 
         view = SceneView.currentDrawingSceneView
         cameras = view.GetAllSceneCameras()
         ccam = cameras[0] if cameras.Length
-        parent_transform as Transform
         if ccam:
             screenCenterRay = ccam.ScreenPointToRay(Vector3(ccam.pixelWidth / 2f, ccam.pixelHeight / 2f, 0.0f))
-            active_tile = Selection.activeGameObject.GetComponent of Autotile() if Selection.activeGameObject
-            parent_transform = Selection.activeTransform.parent if active_tile
-            if parent_transform:
-                screen_ray_direction = parent_transform.InverseTransformPoint(screenCenterRay.direction + parent_transform.position)
-                screen_ray_origin = parent_transform.InverseTransformPoint(screenCenterRay.origin)
+            active_tile = Selection.activeGameObject.GetComponent of AutotileBase() if Selection.activeGameObject
+            parent = Selection.activeTransform.parent if active_tile
+            if parent:
+                screen_ray_direction = parent.InverseTransformPoint(screenCenterRay.direction + parent.position)
+                screen_ray_origin = parent.InverseTransformPoint(screenCenterRay.origin)
 
                 if screen_ray_direction.z > 0f and  screen_ray_origin.z < 0f or\
                    screen_ray_direction.z < 0f and  screen_ray_origin.z > 0f:
@@ -48,7 +51,7 @@ static class AutotileMenus:
                     t = -screen_ray_origin.z / screen_ray_direction.z
                     target_pos = screen_ray_origin + t * screen_ray_direction
                     target_pos.z = 0f
-                    target_pos = parent_transform.TransformPoint(target_pos)
+                    target_pos = parent.TransformPoint(target_pos)
             else:
                 if screenCenterRay.direction.z > 0f and  screenCenterRay.origin.z < 0f or\
                    screenCenterRay.direction.z < 0f and  screenCenterRay.origin.z > 0f:
@@ -56,6 +59,30 @@ static class AutotileMenus:
                     t = -screenCenterRay.origin.z / screenCenterRay.direction.z
                     target_pos = screenCenterRay.origin + t * screenCenterRay.direction
                     target_pos.z = 0f
+
+        return target_pos
+
+    [MenuItem("GameObject/Create Other/Autotile Animation")]
+    def CreateAutotileAnimation() as AutotileAnimation:
+        parent_transform = CurrentTransformParent()
+        target_pos = NewObjectPos(parent_transform)
+
+        targetObject = GameObject("Autotile")
+        target = targetObject.AddComponent of AutotileAnimation()
+        targetObject.transform.position = target_pos
+        targetObject.transform.parent = parent_transform if parent_transform
+        targetObject.transform.localRotation = Quaternion.identity
+        if AutotileConfig.config.animationSets.Count:
+            target.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
+            target.renderer.material = AutotileConfig.config.animationSets.First().material
+            target.Refresh()
+        EditorGUIUtility.PingObject(targetObject)
+        Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
+
+    [MenuItem("GameObject/Create Other/Autotile %t")]
+    def CreateAutotile() as Autotile:
+        parent_transform = CurrentTransformParent()
+        target_pos = NewObjectPos(parent_transform)
 
         targetObject = GameObject("Autotile")
         target = targetObject.AddComponent of Autotile()
@@ -66,6 +93,7 @@ static class AutotileMenus:
             target.tilesetKey = AutotileConfig.config.sets.FirstKey()
             target.renderer.material = AutotileConfig.config.sets.First().material
             target.Refresh()
+        EditorGUIUtility.PingObject(targetObject)
         Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
 
     [MenuItem ("Component/Plugins/Autotile", true)]

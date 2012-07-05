@@ -11,21 +11,30 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         public tilesHigh as int
         public preview as Texture2D
 
+    class TilesetCandidate:
+        public name = ""
+        public material as Material
+        public tileSize = 128
+        public show = false
+
+    class TilesetAnimationCandidate (TilesetCandidate):
+        public framesPerSecond = 50f
+
     config as AutotileConfig
 
-    newSetName = ""
-    newSetMaterial as Material
-    newSetTileSize = 128
-    showNewSet = false
+    candidate = TilesetCandidate()
+    animationCandidate = TilesetAnimationCandidate()
+
     initialized = false
 
     inError as bool
 
-    tilesetMeta as Dictionary[of AutotileSet, TilesetMeta]
+    tilesetMeta as Dictionary[of AutotileBaseSet, TilesetMeta]
     highlightTexture as Texture2D
 
     trashCan as GUIContent
     corners as Dictionary[of string, GUIContent]
+    cardinalCorners as (GUIContent)
 
     def ExpandedCornerLetters(s as string):
         s = join(s[:4], "-")
@@ -40,7 +49,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
     def Init():
         corners = Dictionary[of string, GUIContent]()
-        tilesetMeta = Dictionary[of AutotileSet, TilesetMeta]()
+        tilesetMeta = Dictionary[of AutotileBaseSet, TilesetMeta]()
 
         highlightColor = Color(GUI.contentColor.r, GUI.contentColor.g, GUI.contentColor.b, 0.5f)
         highlightTexture = Texture2D(1, 1, TextureFormat.ARGB32, false)
@@ -60,12 +69,29 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 corners[icon[:4]] = GUIContent(AssetDatabase.LoadAssetAtPath("$corner_folder/$(icon[:4]).png", Texture), tips)
         corners["Unknown"] = GUIContent(AssetDatabase.LoadAssetAtPath("$corner_folder/Unknown.png", Texture), "Fallback corner")
 
+        cardinalCorners = (corners["AAAA"], corners["ADAA"], corners["AAAD"], corners["DAAA"], corners["AADA"])
+
         config = target as AutotileConfig
 
-        imagesBeingResized = config.sets.Count
-        for i, setEntry as KeyValuePair[of string, AutotileSet] in enumerate(config.sets):
+        autotileImages = config.sets.Count
+        autotileAnimationImages = config.animationSets.Count
+        imagesBeingResized = autotileImages + autotileAnimationImages
+
+        for i as int, setEntry as KeyValuePair[of string, AutotileSet] in enumerate(config.sets):
             imageBeingResized = i
             PopulateAtlasPreview(setEntry.Value, setEntry.Key)
+        for i as int, setEntry as KeyValuePair[of string, AutotileAnimationSet] in enumerate(config.animationSets):
+            imageBeingResized = i + autotileImages
+            aaSet = setEntry.Value
+            animCorners = aaSet.corners
+            for j in range(5):
+                animCorners.candidateFrames[j] = len(animCorners[j])
+            for j, len_set as KeyValuePair[of int, AutotileAnimationTileset] in enumerate(aaSet.sets):
+                ats = len_set.Value
+                for k in range(2):
+                    ats.candidateFrames[k] = len(ats[k])
+            PopulateAtlasPreview(setEntry.Value, setEntry.Key)
+
         EditorUtility.ClearProgressBar()
 
     private imagesBeingResized as int
@@ -73,11 +99,11 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
     def Progress(s as single):
         EditorUtility.DisplayProgressBar("Creating atlas previews", "", (imageBeingResized + s) / imagesBeingResized)
 
-    def PopulateAtlasPreview(s as AutotileSet, name as string) as bool:
+    def PopulateAtlasPreview(s as AutotileBaseSet, name as string) as bool:
         PopulateAtlasPreview(s, name, true)
 
     private preview_failure = false
-    def PopulateAtlasPreview(s as AutotileSet, name, initMetaAndTexture as bool) as bool:
+    def PopulateAtlasPreview(s as AutotileBaseSet, name as string, initMetaAndTexture as bool) as bool:
         if not preview_failure:
 
             unless s.material and s.material.mainTexture:
@@ -118,7 +144,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
         return not preview_failure
 
-     def drawTileGUIContent(s as AutotileSet, t as Tile, n as string, prefix as string, c as GUIContent):
+     def drawTileGUIContent(s as AutotileBaseSet, t as Tile, n as string, prefix as string, c as GUIContent):
         t.show = EditorGUILayout.Foldout(t.show, c)
         nextMeta as TilesetMeta
         if t.show:
@@ -154,6 +180,13 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                             t.atlasLocation.width * myRect.width,
                             t.atlasLocation.height * myRect.height)
                     GUI.DrawTexture(highlightRect, highlightTexture)
+
+                if t isa AnimationTile:
+                    at = t as AnimationTile
+                    newFrames = EditorGUILayout.IntField("Frames", at.frames)
+                    if at.frames != newFrames:
+                        Undo.RegisterUndo(config, "Set duration in $(prefix)$n")
+                        at.frames = newFrames
 
                 newAtlasLocation = EditorGUILayout.RectField("Tile Location", t.atlasLocation)
                 if t.atlasLocation != newAtlasLocation:
@@ -192,276 +225,596 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 Debug.LogError("Failed to get material for $(s.name)") unless inError
                 inError = true
 
-    def drawTileGUINamed(s as AutotileSet, t as Tile, n as string, prefix as string):
+    def drawTileGUINamed(s as AutotileBaseSet, t as Tile, n as string, prefix as string):
         drawTileGUIContent(s, t, n, prefix, GUIContent("$n"))
 
-    def drawTileGUI(s as AutotileSet, t as Tile, n as string):
+    def drawTileGUI(s as AutotileBaseSet, t as Tile, n as string):
         drawTileGUIContent(s, t, n, "", corners[n])
 
-    def OnInspectorGUI():
+    def changeTileSize(s as AutotileSet, newSize as int):
+        s.tileSize = newSize
+        if s.material and s.material.mainTexture:
+            mt = s.material.mainTexture as Texture2D
+            nWidth = newSize cast single / mt.width cast single
+            nHeight = newSize cast single / mt.height cast single
+            for tile in s.corners:
+                tile.atlasLocation.width = nWidth
+                tile.atlasLocation.height = nHeight
+            for kvp as KeyValuePair[of int, AutotileCenterSet] in s.centerSets:
+                cs = kvp.Value
+                length = kvp.Key
+                cs.leftFace.atlasLocation.width            = nWidth
+                cs.rightFace.atlasLocation.width           = nWidth
+                cs.doubleVerticalFace.atlasLocation.width  = nWidth
+                cs.leftFace.atlasLocation.height           = nHeight * length
+                cs.rightFace.atlasLocation.height          = nHeight * length
+                cs.doubleVerticalFace.atlasLocation.height = nHeight * length
 
-        unless initialized:
-            Init()
-            initialized = true
+                cs.upFace.atlasLocation.width                = nWidth * length
+                cs.downFace.atlasLocation.width              = nWidth * length
+                cs.doubleHorizontalFace.atlasLocation.width  = nWidth * length
+                cs.upFace.atlasLocation.height               = nHeight
+                cs.downFace.atlasLocation.height             = nHeight
+                cs.doubleHorizontalFace.atlasLocation.height = nHeight
 
-        showNewSet = EditorGUILayout.Foldout(showNewSet, "New Set")
-        if showNewSet:
+    def changeTileSize(s as AutotileAnimationSet, newSize as int):
+        s.tileSize = newSize
+        if s.material and s.material.mainTexture:
+            mt = s.material.mainTexture as Texture2D
+            nWidth = newSize cast single / mt.width cast single
+            nHeight = newSize cast single / mt.height cast single
+            for cornerType in s.corners:
+                for tile in cornerType:
+                    tile.atlasLocation.width = nWidth
+                    tile.atlasLocation.height = nHeight
+            for kvp as KeyValuePair[of int, AutotileAnimationTileset] in s.sets:
+                cs = kvp.Value
+                length = kvp.Key
+
+                for hFace in cs.horizontalFaces:
+                    hFace.atlasLocation.width  = nWidth * length
+                    hFace.atlasLocation.height = nHeight
+                for vFace in cs.verticalFaces:
+                    vFace.atlasLocation.width    = nWidth
+                    vFace.atlasLocation.height   = nHeight * length
+
+    def PresentAndGetNewCandidate(c as TilesetCandidate, check as callable(string) as bool, f as callable(TilesetCandidate)):
+        acceptNewSet = false
+        c.show = EditorGUILayout.Foldout(c.show, "New Set")
+        if c.show:
             EditorGUI.indentLevel += 1
-            newSetName = EditorGUILayout.TextField("Name", newSetName)
-            newSetTileSize = EditorGUILayout.IntField("Tile Size", newSetTileSize)
-            newSetMaterial = EditorGUILayout.ObjectField("Material", newSetMaterial, Material, false)
+            c.name = EditorGUILayout.TextField("Name", c.name)
+            c.tileSize = EditorGUILayout.IntField("Tile Size", c.tileSize)
+            c.material = EditorGUILayout.ObjectField("Material", c.material, Material, false)
+            if c isa TilesetAnimationCandidate:
+                ac = c as TilesetAnimationCandidate
+                ac.framesPerSecond = EditorGUILayout.FloatField("Frames Per Second", ac.framesPerSecond)
             myRect = GUILayoutUtility.GetRect(0f, 16f)
-            myRect.x += 16
-            myRect.width -= 16
-            GUI.enabled = newSetName != "" and newSetMaterial != null
+            myRect.x += 24
+            myRect.width -= 24
+            GUI.enabled = c.name != "" and check(c.name) and c.material != null
             acceptNewSet = GUI.Button(myRect, "Add")
             GUI.enabled = true
             EditorGUI.indentLevel -= 1
 
-        if newSetName and acceptNewSet and newSetMaterial:
-            Undo.RegisterUndo(config, "Add Autotile Set $newSetName")
+        if acceptNewSet and c.name and c.material:
+            Undo.RegisterUndo(config, "Add Autotile Set $(c.name)")
 
-            path = AssetDatabase.GetAssetPath(newSetMaterial.mainTexture)
+            path = AssetDatabase.GetAssetPath(c.material.mainTexture)
             textureImporter = AssetImporter.GetAtPath(path) as TextureImporter
             textureImporter.mipmapEnabled = false
             textureImporter.isReadable = true
             textureImporter.filterMode = FilterMode.Point
             AssetDatabase.ImportAsset(path)
 
-            newSet = AutotileSet()
-            newSet.material = newSetMaterial
-            newSet.tileSize = newSetTileSize
+            f(c)
 
-            # Add a '1' center set
-            newCenterSet = AutotileCenterSet()
-            v_props = (newCenterSet.leftFace, newCenterSet.rightFace, newCenterSet.doubleVerticalFace)
-            h_props = (newCenterSet.downFace, newCenterSet.upFace,    newCenterSet.doubleHorizontalFace)
-            newTilesWide = newSetMaterial.mainTexture.width / newSetTileSize
-            newTilesHigh = newSetMaterial.mainTexture.height / newSetTileSize
-            for face in h_props:
-                face.atlasLocation.width = 1.0f / newTilesWide
-                face.atlasLocation.height = 1.0f / newTilesHigh
-                face.direction = TileFlipDirection.Vertical
-            for face in v_props:
-                face.atlasLocation.width = 1.0f / newTilesWide
-                face.atlasLocation.height = 1.0f / newTilesHigh
-                face.direction = TileFlipDirection.Horizontal
-            newSet.centerSets[1] = newCenterSet
+            c.name = ""
+            c.tileSize = 128
+            c.material = null
+            if c isa TilesetAnimationCandidate:
+                ac = c as TilesetAnimationCandidate
+                ac.framesPerSecond = 50f
 
-            for t in newSet.corners:
-                t.atlasLocation.width = 1.0f / newTilesWide
-                t.atlasLocation.height = 1.0f / newTilesHigh
-
-            PopulateAtlasPreview(newSet, newSetName)
-            EditorUtility.ClearProgressBar()
-
-            config.sets[newSetName] = newSet
-            newSetName = ""
-            newSetTileSize = 128
-            newSetMaterial = null
             GUIUtility.keyboardControl = 0
             EditorUtility.SetDirty(config)
 
+    def PresentAndGetDuplicate(c as AutotileBaseSet, name as string, check as callable(string) as bool, f as callable(AutotileBaseSet, string)):
+        c.showDuplicateOption = EditorGUILayout.Foldout(c.showDuplicateOption, "Duplicate")
+        if c.showDuplicateOption:
+            EditorGUI.indentLevel += 1
+
+            c.duplicateCandidate = EditorGUILayout.TextField("Duplicate Name", c.duplicateCandidate)
+
+            GUI.enabled = c.duplicateCandidate != "" and check(c.duplicateCandidate)
+
+            myRect = GUILayoutUtility.GetRect(0f, 16f)
+            myRect.x += 32
+            myRect.width -= 32
+            if GUI.Button(myRect, "Duplicate $name as $(c.duplicateCandidate)"):
+                Undo.RegisterUndo(config, "Duplicate $name")
+                newSet = c.Duplicate()
+                f(newSet, c.duplicateCandidate)
+
+                c.duplicateCandidate = ""
+                GUIUtility.keyboardControl = 0
+
+            GUI.enabled = true
+            EditorGUI.indentLevel -= 1
+
+    def PresentAndGetSettings(c as AutotileBaseSet, name as string, onTileSizeChange as callable(int)):
+        c.showSettings = EditorGUILayout.Foldout(c.showSettings, "Settings")
+        if c.showSettings:
+            EditorGUI.indentLevel += 1
+            changedTileSize = EditorGUILayout.IntField("Tile Size", c.tileSize)
+            if changedTileSize != c.tileSize:
+                Undo.RegisterUndo(config, "Change $name tile size")
+                onTileSizeChange(changedTileSize)
+                PopulateAtlasPreview(c, name, false)
+            changedMaterial = EditorGUILayout.ObjectField("Material", c.material, Material, false)
+            if changedMaterial != c.material:
+                Undo.RegisterUndo(config, "Change $name material")
+                c.material = changedMaterial
+                PopulateAtlasPreview(c, name)
+                EditorUtility.ClearProgressBar()
+
+            myRect = GUILayoutUtility.GetRect(0f, 16f)
+            myRect.x += 32
+            myRect.width -= 32
+            openAllTiles = GUI.Button(myRect, "Open All Tiles")
+            myRect = GUILayoutUtility.GetRect(0f, 16f)
+            myRect.x += 32
+            myRect.width -= 32
+            closeAllTiles = GUI.Button(myRect, "Close All Tiles")
+
+            EditorGUI.indentLevel -= 1
+
+    private openAllTiles as bool
+    private closeAllTiles as bool
+    def OnInspectorGUI():
+
+        unless initialized:
+            Init()
+            initialized = true
+
+        f = def(v as bool):
+            return not closeAllTiles and (openAllTiles or v)
+
         tileSetTrash = []
+        animTileSetTrash = []
         newSets = []
+        newAnimSets = []
         newNames = []
+        newAnimNames = []
 
-        for setEntry in config.sets:
-            autotileSet = setEntry.Value
-            autotileSetName = setEntry.Key
-            autotileSet.name = autotileSetName
-            meta as TilesetMeta
-            unless tilesetMeta.TryGetValue(autotileSet, meta):
-                Debug.LogError("Failed to get material for $(autotileSetName)") unless inError
-                inError = true
+        config.sets.show = EditorGUILayout.Foldout(config.sets.show, "Static")
+        if config.sets.show:
+            EditorGUI.indentLevel += 1
 
-            openAllTiles = false
-            closeAllTiles = false
+            PresentAndGetNewCandidate(candidate, {s as string | return not config.sets.ContainsKey(s)}) do(c):
+                newSet = AutotileSet()
+                newSet.material = c.material
+                newSet.tileSize = c.tileSize
 
-            autotileSet.show = EditorGUILayout.Foldout(autotileSet.show, autotileSetName)
+                # Add a '1' center set
+                newCenterSet = AutotileCenterSet()
+                v_props = (newCenterSet.leftFace, newCenterSet.rightFace, newCenterSet.doubleVerticalFace)
+                h_props = (newCenterSet.downFace, newCenterSet.upFace,    newCenterSet.doubleHorizontalFace)
+                newTilesWide = c.material.mainTexture.width / c.tileSize
+                newTilesHigh = c.material.mainTexture.height / c.tileSize
+                for face in h_props:
+                    face.atlasLocation.width = 1.0f / newTilesWide
+                    face.atlasLocation.height = 1.0f / newTilesHigh
+                    face.direction = TileFlipDirection.Vertical
+                for face in v_props:
+                    face.atlasLocation.width = 1.0f / newTilesWide
+                    face.atlasLocation.height = 1.0f / newTilesHigh
+                    face.direction = TileFlipDirection.Horizontal
+                newSet.centerSets[1] = newCenterSet
 
-            if autotileSet.show:
-                EditorGUI.indentLevel += 1
+                for t in newSet.corners:
+                    t.atlasLocation.width = 1.0f / newTilesWide
+                    t.atlasLocation.height = 1.0f / newTilesHigh
 
-                f = def(v as bool):
-                    return not closeAllTiles and (openAllTiles or v)
+                PopulateAtlasPreview(newSet, c.name)
+                EditorUtility.ClearProgressBar()
 
-                autotileSet.showDuplicateOption = EditorGUILayout.Foldout(autotileSet.showDuplicateOption, "Duplicate")
-                if autotileSet.showDuplicateOption:
+                config.sets[c.name] = newSet
+
+            for setEntry in config.sets:
+                autotileSet = setEntry.Value
+                autotileSetName = setEntry.Key
+                autotileSet.name = autotileSetName
+                meta as TilesetMeta
+                unless tilesetMeta.TryGetValue(autotileSet, meta):
+                    Debug.LogError("Failed to get material for $(autotileSetName)") unless inError
+                    inError = true
+
+                autotileSet.show = EditorGUILayout.Foldout(autotileSet.show, autotileSetName)
+
+                openAllTiles = false
+                closeAllTiles = false
+
+                if autotileSet.show:
                     EditorGUI.indentLevel += 1
 
-                    autotileSet.duplicateCandidate = EditorGUILayout.TextField("Duplicate Name", autotileSet.duplicateCandidate)
+                    PresentAndGetDuplicate(autotileSet, autotileSetName, {s as string| return not config.sets.ContainsKey(s)}) do(s, name):
+                        newSets.Add(s)
+                        newNames.Add(name)
 
-                    GUI.enabled = autotileSet.duplicateCandidate != "" and\
-                                  not config.sets.ContainsKey(autotileSet.duplicateCandidate)
+                    PresentAndGetSettings(autotileSet, autotileSetName, {s as int | changeTileSize(autotileSet, s)})
 
-                    myRect = GUILayoutUtility.GetRect(0f, 16f)
-                    myRect.x += 24
-                    myRect.width -= 24
-                    if GUI.Button(myRect, "Duplicate $autotileSetName as $(autotileSet.duplicateCandidate)"):
-                        Undo.RegisterUndo(config, "Duplicate $autotileSetName")
-                        newSet = autotileSet.Duplicate()
-                        newSets.Add(newSet)
-                        newNames.Add(autotileSet.duplicateCandidate)
+                    autotileSet.showCenterSets = EditorGUILayout.Foldout(f(autotileSet.showCenterSets), "Center Sets")
+                    if autotileSet.showCenterSets:
+                        trash = []
 
-                        autotileSet.duplicateCandidate = ""
-                        GUIUtility.keyboardControl = 0
-
-                    GUI.enabled = true
-                    EditorGUI.indentLevel -= 1
-
-                autotileSet.showSettings = EditorGUILayout.Foldout(autotileSet.showSettings, "Settings")
-                if autotileSet.showSettings:
-                    EditorGUI.indentLevel += 1
-                    changedTileSize = EditorGUILayout.IntField("Tile Size", autotileSet.tileSize)
-                    if changedTileSize != autotileSet.tileSize:
-                        Undo.RegisterUndo(config, "Change $autotileSetName tile size")
-                        autotileSet.tileSize = changedTileSize
-                        PopulateAtlasPreview(autotileSet, autotileSetName, false)
-                    changedMaterial = EditorGUILayout.ObjectField("Material", autotileSet.material, Material, false)
-                    if changedMaterial != autotileSet.material:
-                        Undo.RegisterUndo(config, "Change $autotileSetName material")
-                        autotileSet.material = changedMaterial
-                        PopulateAtlasPreview(autotileSet, autotileSetName)
-                        EditorUtility.ClearProgressBar()
-
-                    myRect = GUILayoutUtility.GetRect(0f, 16f)
-                    myRect.x += 24
-                    myRect.width -= 24
-                    openAllTiles = GUI.Button(myRect, "Open All Tiles")
-                    myRect = GUILayoutUtility.GetRect(0f, 16f)
-                    myRect.x += 24
-                    myRect.width -= 24
-                    closeAllTiles = GUI.Button(myRect, "Close All Tiles")
-
-                    EditorGUI.indentLevel -= 1
-
-                autotileSet.showCenterSets = EditorGUILayout.Foldout(f(autotileSet.showCenterSets), "Center Sets")
-                if autotileSet.showCenterSets:
-                    trash = []
-
-                    EditorGUI.indentLevel += 1
-
-                    autotileSet.showNewCenterSetOption = EditorGUILayout.Foldout(autotileSet.showNewCenterSetOption, "New")
-                    if autotileSet.showNewCenterSetOption:
                         EditorGUI.indentLevel += 1
-                        autotileSet.newCandidate = EditorGUILayout.IntField("Length", autotileSet.newCandidate)
+
+                        autotileSet.showNewCenterSetOption = EditorGUILayout.Foldout(autotileSet.showNewCenterSetOption, "New")
+                        if autotileSet.showNewCenterSetOption:
+                            EditorGUI.indentLevel += 1
+                            autotileSet.newCandidate = EditorGUILayout.IntField("Length", autotileSet.newCandidate)
+                            myRect = GUILayoutUtility.GetRect(0f, 16f)
+                            myRect.x += 40
+                            myRect.width -= 40
+                            GUI.enabled = autotileSet.newCandidate > 0 and not autotileSet.centerSets.ContainsKey(autotileSet.newCandidate)
+                            acceptNew = GUI.Button(myRect, "Add")
+                            GUI.enabled = true
+                            EditorGUI.indentLevel -= 1
+
+                        if autotileSet.newCandidate > 0 and acceptNew and meta:
+                            Undo.RegisterUndo(config, "Add New Center Set $(autotileSet.newCandidate)")
+
+                            newCenterSet = AutotileCenterSet()
+                            v_props = (newCenterSet.leftFace, newCenterSet.rightFace, newCenterSet.doubleVerticalFace)
+                            h_props = (newCenterSet.downFace, newCenterSet.upFace,    newCenterSet.doubleHorizontalFace)
+                            tilesWide = meta.tilesWide
+                            tilesHigh = meta.tilesHigh
+                            for face in v_props:
+                                face.atlasLocation.width = 1.0f / tilesWide
+                                face.atlasLocation.height = autotileSet.newCandidate cast single / tilesHigh
+                                face.direction = TileFlipDirection.Vertical
+                            for face in h_props:
+                                face.atlasLocation.width = autotileSet.newCandidate cast single / tilesWide
+                                face.atlasLocation.height = 1.0f / tilesHigh
+                                face.direction = TileFlipDirection.Horizontal
+                            autotileSet.centerSets[autotileSet.newCandidate] = newCenterSet
+                            autotileSet.newCandidate = 1
+                            while autotileSet.centerSets.ContainsKey(autotileSet.newCandidate):
+                                autotileSet.newCandidate *= 2
+                            autotileSet.showCenterSets = true
+                            newCenterSet.show = true
+                            GUIUtility.keyboardControl = 0
+                            EditorUtility.SetDirty(config)
+
+                        for csEntry in autotileSet.centerSets:
+
+                            if csEntry.Value:
+                                cSet = csEntry.Value
+                                cSetKey = csEntry.Key
+
+                                cSet.show = EditorGUILayout.Foldout(f(cSet.show), "$cSetKey")
+                                if cSet.show:
+                                    EditorGUI.indentLevel += 1
+                                    props      = (cSet.leftFace,  cSet.rightFace,  cSet.downFace,  cSet.upFace,  cSet.doubleHorizontalFace,   cSet.doubleVerticalFace)
+                                    prop_names = ("Left Face",    "Right Face",    "Down Face",    "Up Face",    "Double Horizontal Face",    "Double Vertical Face")
+                                    for face as Tile, faceName as string in zip(props, prop_names):
+                                        drawTileGUINamed(autotileSet, face, faceName, "$cSetKey/")
+
+                                    cSet.showRemoveOption = EditorGUILayout.Foldout(cSet.showRemoveOption, trashCan)
+                                    if cSet.showRemoveOption:
+                                        EditorGUI.indentLevel += 1
+                                        myRect = GUILayoutUtility.GetRect(0f, 16f)
+                                        myRect.x += 48
+                                        myRect.width -= 48
+                                        removeCenterSet = GUI.Button(myRect, "Remove $autotileSetName/$cSetKey")
+                                        if removeCenterSet:
+                                            Undo.RegisterUndo(config, "Remove Center Set $autotileSetName/$cSetKey")
+                                            trash.Push(cSetKey)
+                                            EditorUtility.SetDirty(config)
+
+                                            autotileSet.newCandidate = 1
+                                            while cSetKey != autotileSet.newCandidate and autotileSet.centerSets.ContainsKey(autotileSet.newCandidate):
+                                                autotileSet.newCandidate *= 2
+
+                                        EditorGUI.indentLevel -= 1
+
+                                    EditorGUI.indentLevel -= 1
+                            else:
+                                EditorGUILayout.BeginHorizontal()
+                                EditorGUILayout.LabelField("$(csEntry.Key) (missing)")
+                                if GUILayout.Button("Remove $(csEntry.Key)", GUILayout.Width(160)):
+                                    Undo.RegisterUndo(config, "Remove Center Set $(csEntry.Key)")
+                                    trash.Push(csEntry.Key)
+                                EditorGUILayout.EndHorizontal()
+
+                        EditorGUI.indentLevel -= 1
+
+                        for t in trash:
+                            autotileSet.centerSets.Remove(t)
+
+                    for csEntry in autotileSet.centerSets:
+                        if csEntry.Value:
+                            cSet = csEntry.Value
+                            cSet.show = f(cSet.show)
+                            props = (cSet.leftFace,  cSet.rightFace,  cSet.downFace,  cSet.upFace,  cSet.doubleHorizontalFace,   cSet.doubleVerticalFace)
+                            if closeAllTiles or openAllTiles:
+                                for face in props:
+                                    face.show = f(face.show)
+
+                    if closeAllTiles or openAllTiles:
+                        for t in autotileSet.corners:
+                            t.show = f(t.show)
+
+                    autotileSet.showCorners = EditorGUILayout.Foldout(f(autotileSet.showCorners), "Corners")
+                    if autotileSet.showCorners:
+                        EditorGUI.indentLevel += 1
+                        all_corners autotileSet, autotileSet.corners, drawTileGUI
+                        EditorGUI.indentLevel -= 1
+
+                    autotileSet.showRemoveOption = EditorGUILayout.Foldout(autotileSet.showRemoveOption, trashCan)
+                    if autotileSet.showRemoveOption:
                         myRect = GUILayoutUtility.GetRect(0f, 16f)
                         myRect.x += 32
                         myRect.width -= 32
-                        GUI.enabled = autotileSet.newCandidate > 0 and not autotileSet.centerSets.ContainsKey(autotileSet.newCandidate)
-                        acceptNew = GUI.Button(myRect, "Add")
-                        GUI.enabled = true
+                        if GUI.Button(myRect, "Remove $autotileSetName"):
+                            Undo.RegisterUndo(config, "Remove Set $autotileSetName")
+                            tileSetTrash.Push(autotileSetName)
+                            EditorUtility.SetDirty(config)
+
+                    EditorGUI.indentLevel -= 1
+
+            for s as string in tileSetTrash:
+                config.sets.Remove(s)
+
+            for tileset, name in zip(newSets, newNames):
+                config.sets[name] = tileset
+                PopulateAtlasPreview(tileset, name)
+                EditorUtility.ClearProgressBar()
+                EditorUtility.SetDirty(config)
+
+            EditorGUI.indentLevel -= 1
+
+        config.animationSets.show = EditorGUILayout.Foldout(config.animationSets.show, "Animated")
+        if config.animationSets.show:
+            EditorGUI.indentLevel += 1
+
+            PresentAndGetNewCandidate(animationCandidate, {s as string | return not config.animationSets.ContainsKey(s)}) do(c):
+                newAnimSet = AutotileAnimationSet()
+                newAnimSet.material = c.material
+                newAnimSet.tileSize = c.tileSize
+                ac = c as TilesetAnimationCandidate
+                newAnimSet.framesPerSecond = ac.framesPerSecond
+
+                # Add a '1' center set
+                newAnimationTileset = AutotileAnimationTileset()
+                newTilesWide = c.material.mainTexture.width / c.tileSize
+                newTilesHigh = c.material.mainTexture.height / c.tileSize
+
+                for hFace in newAnimationTileset.horizontalFaces:
+                    hFace.atlasLocation.width  = 1.0f / newTilesWide
+                    hFace.atlasLocation.height = 1.0f / newTilesHigh
+                    hFace.direction = TileFlipDirection.Vertical
+                for vFace in newAnimationTileset.verticalFaces:
+                    vFace.atlasLocation.width  = 1.0f / newTilesWide
+                    vFace.atlasLocation.height = 1.0f / newTilesHigh
+                    vFace.direction = TileFlipDirection.Horizontal
+
+                newAnimSet.sets[1] = newAnimationTileset
+
+                for cornerType in newAnimSet.corners:
+                    for t in cornerType:
+                        t.atlasLocation.width = 1.0f / newTilesWide
+                        t.atlasLocation.height = 1.0f / newTilesHigh
+
+                PopulateAtlasPreview(newAnimSet, c.name)
+                EditorUtility.ClearProgressBar()
+
+                config.animationSets[animationCandidate.name] = newAnimSet
+
+            for setEntry in config.animationSets:
+                autotileAnimSet = setEntry.Value
+                autotileAnimSetName = setEntry.Key
+                autotileAnimSet.name = autotileAnimSetName
+                animCorners = autotileAnimSet.corners
+                unless tilesetMeta.TryGetValue(autotileAnimSet, meta):
+                    Debug.LogError("Failed to get material for $(autotileAnimSetName)") unless inError
+                    inError = true
+
+                openAllTiles = false
+                closeAllTiles = false
+
+                autotileAnimSet.show = EditorGUILayout.Foldout(autotileAnimSet.show, autotileAnimSetName)
+
+                if autotileAnimSet.show:
+                    EditorGUI.indentLevel += 1
+
+                    PresentAndGetDuplicate(autotileAnimSet, autotileAnimSetName, {s as string | return not config.animationSets.ContainsKey(s)}) do(s, name):
+                        newAnimSets.Add(s)
+                        newAnimNames.Add(name)
+
+                    PresentAndGetSettings(autotileAnimSet, autotileAnimSetName, {s as int | changeTileSize(autotileAnimSet, s)})
+
+                    autotileAnimSet.showSets = EditorGUILayout.Foldout(f(autotileAnimSet.showSets), "Center Sets")
+                    if autotileAnimSet.showSets:
+                        trash = []
+
+                        EditorGUI.indentLevel += 1
+
+                        autotileAnimSet.showNewSetOption = EditorGUILayout.Foldout(autotileAnimSet.showNewSetOption, "New")
+                        if autotileAnimSet.showNewSetOption:
+                            EditorGUI.indentLevel += 1
+                            autotileAnimSet.newCandidate = EditorGUILayout.IntField("Length", autotileAnimSet.newCandidate)
+                            myRect = GUILayoutUtility.GetRect(0f, 16f)
+                            myRect.x += 40
+                            myRect.width -= 40
+                            GUI.enabled = autotileAnimSet.newCandidate > 0 and not autotileAnimSet.sets.ContainsKey(autotileAnimSet.newCandidate)
+                            acceptNew = GUI.Button(myRect, "Add")
+                            GUI.enabled = true
+                            EditorGUI.indentLevel -= 1
+
+                        if autotileAnimSet.newCandidate > 0 and acceptNew and meta:
+                            Undo.RegisterUndo(config, "Add New Animation Set $(autotileAnimSet.newCandidate)")
+
+                            newAnimationTileset = AutotileAnimationTileset()
+                            tilesWide = meta.tilesWide
+                            tilesHigh = meta.tilesHigh
+
+                            for hFace in newAnimationTileset.horizontalFaces:
+                                hFace.atlasLocation.width  = autotileAnimSet.newCandidate cast single / tilesWide
+                                hFace.atlasLocation.height = 1.0f / tilesHigh
+                                hFace.direction = TileFlipDirection.Vertical
+                            for vFace in newAnimationTileset.verticalFaces:
+                                vFace.atlasLocation.width  = 1.0f / tilesWide
+                                vFace.atlasLocation.height = autotileAnimSet.newCandidate cast single / tilesHigh
+                                vFace.direction = TileFlipDirection.Horizontal
+
+                            autotileAnimSet.sets[autotileAnimSet.newCandidate] = newAnimationTileset
+                            autotileAnimSet.newCandidate = 1
+                            while autotileAnimSet.sets.ContainsKey(autotileAnimSet.newCandidate):
+                                autotileAnimSet.newCandidate *= 2
+                            autotileAnimSet.showSets = true
+                            newAnimationTileset.show = true
+                            GUIUtility.keyboardControl = 0
+                            EditorUtility.SetDirty(config)
+
+                        for csEntry in autotileAnimSet.sets:
+
+                            if csEntry.Value:
+                                cAnimSet = csEntry.Value
+                                cSetKey = csEntry.Key
+
+                                cAnimSet.show = EditorGUILayout.Foldout(f(cAnimSet.show), "$cSetKey")
+                                if cAnimSet.show:
+                                    EditorGUI.indentLevel += 1
+                                    faceTypes = ("Horizontal", "Vertical")
+                                    for face as (AnimationTile), i as int in zip(cAnimSet, range(2)):
+                                        cAnimSet.showingFace[i] = EditorGUILayout.Foldout(cAnimSet.showingFace[i], faceTypes[i])
+                                        if cAnimSet.showingFace[i]:
+                                            EditorGUI.indentLevel += 1
+                                            cAnimSet.candidateFrames[i] = EditorGUILayout.IntField("Animation Frames", cAnimSet.candidateFrames[i])
+                                            realFrames = len(cAnimSet[i])
+                                            if realFrames != cAnimSet.candidateFrames[i] and cAnimSet.candidateFrames[i]:
+                                                myRect = GUILayoutUtility.GetRect(0f, 16f)
+                                                myRect.x += 48
+                                                myRect.width -= 48
+                                                if GUI.Button(myRect, "Apply"):
+                                                    Undo.RegisterUndo(config, "Change number of animation frames")
+                                                    newFrameTiles = array(AnimationTile, cAnimSet.candidateFrames[i])
+                                                    refIndex = -1
+                                                    for t in cAnimSet[i][:cAnimSet.candidateFrames[i]]:
+                                                        refIndex += 1
+                                                        newFrameTiles[refIndex] = t
+                                                    if realFrames < cAnimSet.candidateFrames[i]:
+                                                        for k in range(refIndex + 1, cAnimSet.candidateFrames[i]):
+                                                            newFrameTiles[k] = cAnimSet[i][refIndex]
+                                                    cAnimSet.SetFaces(i, array(AnimationTile, (t.Duplicate() for t in newFrameTiles)))
+                                            for j, t as AnimationTile in enumerate(cAnimSet[i]):
+                                                drawTileGUIContent(autotileAnimSet, t, "#$j", "", GUIContent("#$j"))
+                                            EditorGUI.indentLevel -= 1
+
+                                    cAnimSet.showRemoveOption = EditorGUILayout.Foldout(cAnimSet.showRemoveOption, trashCan)
+                                    if cAnimSet.showRemoveOption:
+                                        EditorGUI.indentLevel += 1
+                                        myRect = GUILayoutUtility.GetRect(0f, 16f)
+                                        myRect.x += 48
+                                        myRect.width -= 48
+                                        removeCenterSet = GUI.Button(myRect, "Remove $autotileAnimSetName/$cSetKey")
+                                        if removeCenterSet:
+                                            Undo.RegisterUndo(config, "Remove Center Set $autotileAnimSetName/$cSetKey")
+                                            trash.Push(cAnimSet)
+                                            EditorUtility.SetDirty(config)
+
+                                            autotileAnimSet.newCandidate = 1
+                                            while cSetKey != autotileAnimSet.newCandidate and autotileAnimSet.sets.ContainsKey(autotileAnimSet.newCandidate):
+                                                autotileAnimSet.newCandidate *= 2
+
+                                        EditorGUI.indentLevel -= 1
+
+                                    EditorGUI.indentLevel -= 1
+                            else:
+                                EditorGUILayout.BeginHorizontal()
+                                EditorGUILayout.LabelField("$(csEntry.Key) (missing)")
+                                if GUILayout.Button("Remove $(csEntry.Key)", GUILayout.Width(160)):
+                                    Undo.RegisterUndo(config, "Remove Center Set $(csEntry.Key)")
+                                    trash.Push(csEntry.Key)
+                                EditorGUILayout.EndHorizontal()
+
                         EditorGUI.indentLevel -= 1
 
-                    if autotileSet.newCandidate > 0 and acceptNew and meta:
-                        Undo.RegisterUndo(config, "Add New Center Set $(autotileSet.newCandidate)")
+                        for t in trash:
+                            autotileAnimSet.sets.Remove(t)
 
-                        newCenterSet = AutotileCenterSet()
-                        v_props = (newCenterSet.leftFace, newCenterSet.rightFace, newCenterSet.doubleVerticalFace)
-                        h_props = (newCenterSet.downFace, newCenterSet.upFace,    newCenterSet.doubleHorizontalFace)
-                        tilesWide = meta.tilesWide
-                        tilesHigh = meta.tilesHigh
-                        for face in v_props:
-                            face.atlasLocation.width = 1.0f / tilesWide
-                            face.atlasLocation.height = autotileSet.newCandidate cast single / tilesHigh
-                        for face in h_props:
-                            face.atlasLocation.width = autotileSet.newCandidate cast single / tilesWide
-                            face.atlasLocation.height = 1.0f / tilesHigh
-                        autotileSet.centerSets[autotileSet.newCandidate] = newCenterSet
-                        autotileSet.newCandidate = 1
-                        while autotileSet.centerSets.ContainsKey(autotileSet.newCandidate):
-                            autotileSet.newCandidate *= 2
-                        autotileSet.showCenterSets = true
-                        newCenterSet.show = true
-                        GUIUtility.keyboardControl = 0
-                        EditorUtility.SetDirty(config)
-
-                    for csEntry in autotileSet.centerSets:
-
+                    for csEntry in autotileAnimSet.sets:
                         if csEntry.Value:
-                            cSet = csEntry.Value
-                            cSetKey = csEntry.Key
+                            cAnimSet = csEntry.Value
+                            cAnimSet.show = f(cAnimSet.show)
+                            if closeAllTiles or openAllTiles:
+                                for faceType as (AnimationTile) in cAnimSet:
+                                    for face in faceType:
+                                        face.show = f(face.show)
 
-                            cSet.show = EditorGUILayout.Foldout(f(cSet.show), "$cSetKey")
-                            if cSet.show:
+                    if closeAllTiles or openAllTiles:
+                        for cornerType in animCorners:
+                            for t in cornerType:
+                                t.show = f(t.show)
+
+                    autotileAnimSet.showCorners = EditorGUILayout.Foldout(f(autotileAnimSet.showCorners), "Corners")
+                    if autotileAnimSet.showCorners:
+                        EditorGUI.indentLevel += 1
+                        for cornerType as (AnimationTile), cornerGUI as GUIContent, i as int in\
+                        zip(animCorners,                   cardinalCorners,         range(5)):
+
+                            animCorners.showingCorner[i] = EditorGUILayout.Foldout(animCorners.showingCorner[i], cornerGUI)
+                            if animCorners.showingCorner[i]:
                                 EditorGUI.indentLevel += 1
-                                props      = (cSet.leftFace,  cSet.rightFace,  cSet.downFace,  cSet.upFace,  cSet.doubleHorizontalFace,   cSet.doubleVerticalFace)
-                                prop_names = ("Left Face",    "Right Face",    "Down Face",    "Up Face",    "Double Horizontal Face",    "Double Vertical Face")
-                                for face as Tile, faceName as string in zip(props, prop_names):
-                                    drawTileGUINamed(autotileSet, face, faceName, "$cSetKey/")
 
-                                cSet.showRemoveOption = EditorGUILayout.Foldout(cSet.showRemoveOption, trashCan)
-                                if cSet.showRemoveOption:
-                                    EditorGUI.indentLevel += 1
+                                animCorners.candidateFrames[i] = EditorGUILayout.IntField("Animation Frames", animCorners.candidateFrames[i])
+                                realFrames = len(animCorners[i])
+                                if realFrames != animCorners.candidateFrames[i] and animCorners.candidateFrames[i]:
                                     myRect = GUILayoutUtility.GetRect(0f, 16f)
                                     myRect.x += 40
                                     myRect.width -= 40
-                                    removeCenterSet = GUI.Button(myRect, "Remove $autotileSetName/$cSetKey")
-                                    if removeCenterSet:
-                                        Undo.RegisterUndo(config, "Remove Center Set $autotileSetName/$cSetKey")
-                                        trash.Push(cSetKey)
-                                        EditorUtility.SetDirty(config)
+                                    if GUI.Button(myRect, "Apply"):
+                                        Undo.RegisterUndo(config, "Change number of animation frames")
+                                        newFrameTiles = array(AnimationTile, animCorners.candidateFrames[i])
+                                        refIndex = -1
+                                        for t in animCorners[i][:cAnimSet.candidateFrames[i]]:
+                                            refIndex += 1
+                                            newFrameTiles[refIndex] = t
+                                        if realFrames < animCorners.candidateFrames[i]:
+                                            for k in range(refIndex + 1, animCorners.candidateFrames[i]):
+                                                newFrameTiles[k] = animCorners[i][refIndex]
+                                        animCorners.SetCorners(i, array(AnimationTile, (t.Duplicate() for t in newFrameTiles)))
 
-                                        autotileSet.newCandidate = 1
-                                        while cSetKey != autotileSet.newCandidate and autotileSet.centerSets.ContainsKey(autotileSet.newCandidate):
-                                            autotileSet.newCandidate *= 2
-
-                                    EditorGUI.indentLevel -= 1
-
+                                for j, t as AnimationTile in enumerate(cornerType):
+                                    drawTileGUIContent(autotileAnimSet, t, "#$j", "", GUIContent("#$j"))
                                 EditorGUI.indentLevel -= 1
-                        else:
-                            EditorGUILayout.BeginHorizontal()
-                            EditorGUILayout.LabelField("$(csEntry.Key) (missing)")
-                            if GUILayout.Button("Remove $(csEntry.Key)", GUILayout.Width(160)):
-                                Undo.RegisterUndo(config, "Remove Center Set $(csEntry.Key)")
-                                trash.Push(csEntry.Key)
-                            EditorGUILayout.EndHorizontal()
+                        EditorGUI.indentLevel -= 1
+
+                    autotileAnimSet.showRemoveOption = EditorGUILayout.Foldout(autotileAnimSet.showRemoveOption, trashCan)
+                    if autotileAnimSet.showRemoveOption:
+                        myRect = GUILayoutUtility.GetRect(0f, 16f)
+                        myRect.x += 32
+                        myRect.width -= 32
+                        if GUI.Button(myRect, "Remove $autotileAnimSetName"):
+                            Undo.RegisterUndo(config, "Remove Set $autotileAnimSetName")
+                            animTileSetTrash.Push(autotileAnimSetName)
+                            EditorUtility.SetDirty(config)
 
                     EditorGUI.indentLevel -= 1
 
-                    for t in trash:
-                        autotileSet.centerSets.Remove(t)
+            for s as string in animTileSetTrash:
+                config.animationSets.Remove(s)
 
-                for csEntry in autotileSet.centerSets:
-                    if csEntry.Value:
-                        cSet = csEntry.Value
-                        cSet.show = f(cSet.show)
-                        props = (cSet.leftFace,  cSet.rightFace,  cSet.downFace,  cSet.upFace,  cSet.doubleHorizontalFace,   cSet.doubleVerticalFace)
-                        if closeAllTiles or openAllTiles:
-                            for face in props:
-                                face.show = f(face.show)
+            for tileset, name in zip(newAnimSets, newAnimNames):
+                config.animationSets[name] = tileset
+                PopulateAtlasPreview(tileset, name)
+                EditorUtility.ClearProgressBar()
+                EditorUtility.SetDirty(config)
 
-                if closeAllTiles or openAllTiles:
-                    for t in autotileSet.corners:
-                        t.show = f(t.show)
-
-                autotileSet.showCorners = EditorGUILayout.Foldout(f(autotileSet.showCorners), "Corners")
-                if autotileSet.showCorners:
-                    EditorGUI.indentLevel += 1
-                    all_corners autotileSet, autotileSet.corners, drawTileGUI
-                    EditorGUI.indentLevel -= 1
-
-                autotileSet.showRemoveOption = EditorGUILayout.Foldout(autotileSet.showRemoveOption, trashCan)
-                if autotileSet.showRemoveOption:
-                    myRect = GUILayoutUtility.GetRect(0f, 16f)
-                    myRect.x += 24
-                    myRect.width -= 24
-                    if GUI.Button(myRect, "Remove $autotileSetName"):
-                        Undo.RegisterUndo(config, "Remove Set $autotileSetName")
-                        tileSetTrash.Push(autotileSetName)
-                        EditorUtility.SetDirty(config)
-
-                EditorGUI.indentLevel -= 1
-
-        for s as string in tileSetTrash:
-            config.sets.Remove(s)
-
-        for tileset, name in zip(newSets, newNames):
-            config.sets[name] = tileset
-            PopulateAtlasPreview(tileset, name)
-            EditorUtility.ClearProgressBar()
-            EditorUtility.SetDirty(config)
+            EditorGUI.indentLevel -= 1
 
         if GUI.changed:
             EditorUtility.SetDirty(config)
+

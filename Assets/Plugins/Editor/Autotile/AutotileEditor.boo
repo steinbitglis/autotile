@@ -85,7 +85,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
     private preview_failure = false
     private try_again = true
-    def PopulatePreview(air_info as Autotile.AirInfoState) as bool:
+    def PopulatePreview(center_length as int, air_info as Autotile.AirInfoState) as bool:
         if not preview_failure and\
            (try_again or\
             not tile.preview or\
@@ -98,8 +98,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 tile.previewTileMode = tile.tileMode
                 tile.previewAirInfo  = air_info
 
-                c_w  = tile.getCenterLength() * 30 if tile.tileMode == TileMode.Horizontal
-                c_h  = tile.getCenterLength() * 30 if tile.tileMode == TileMode.Vertical
+                c_w  = center_length * 30 if tile.tileMode == TileMode.Horizontal
+                c_h  = center_length * 30 if tile.tileMode == TileMode.Vertical
 
                 tile.previewAnathomy = AutotileAnathomy(prev_tile_anathomy)
 
@@ -189,7 +189,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 Debug.LogError("$(tile.gameObject.name) did not find tileset to preview")
         return not preview_failure
 
-    def Refresh(t as Autotile):
+    def Refresh(t as AutotileBase):
         t.Refresh()
         if t.unsaved:
             t.unsaved = false
@@ -255,6 +255,14 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         GUI.enabled = false
         EditorGUILayout.PropertyField(tileModeProp, GUIContent("Tile Mode"))
         GUI.enabled = true
+        newUseCorner = EditorGUILayout.EnumMaskField(GUIContent("Corners"), tile.useCorner)
+
+        if tile.useCorner cast System.Enum != newUseCorner:
+            Undo.RegisterUndo(tile, "Change tile corner")
+            tile.useCorner = newUseCorner
+            Refresh(tile)
+            EditorUtility.SetDirty(tile)
+
         if tile.boxCollider:
             EditorGUILayout.PropertyField(boxColliderMarginProp, GUIContent("Box Collider Margin"))
             if boxColliderMarginProp.floatValue:
@@ -293,6 +301,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         center_gui_h_off = 14
         center_gui_h_off += 15 if top_c
 
+        center_length = tile.getCenterLength()
         c_half_w  = tile.getCenterLength() * 15 if tile.tileMode == TileMode.Horizontal
         c_w       = 2 * c_half_w
         c_half_h  = tile.getCenterLength() * 15 if tile.tileMode == TileMode.Vertical
@@ -366,7 +375,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                                         air_info.leftUp,   air_info.rightUp,
                                         air_info.leftDown, air_info.rightDown)
 
-        if PopulatePreview(air_info_state):
+        if PopulatePreview(center_length, air_info_state):
             GUI.DrawTexture(center_rect, tile.preview)
 
         if is_vertical and\
@@ -556,11 +565,11 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
 
     def OnSceneGUI():
         if Event.current.type == EventType.Repaint:
-            for t in FindObjectsOfType(Autotile):
+            for t in AutotileBase.allAutotileBases:
                 Refresh(t)
-                unless t.renderer.sharedMaterial:
-                    t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
-                    EditorUtility.SetDirty(t.renderer)
+                unless t.localRenderer.sharedMaterial:
+                    t.localRenderer.material = AutotileConfig.config.animationSets[t.tilesetKey].material
+                    EditorUtility.SetDirty(t.localRenderer)
             DrawAutotileConnections()
 
         elif Event.current.type == EventType.KeyDown:

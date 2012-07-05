@@ -12,18 +12,6 @@ macro descending_faces(faceType as Boo.Lang.Compiler.Ast.ReferenceExpression):
             return tileset
     |]
 
-enum HorizontalFace:
-    Up
-    Down
-    Double
-    None
-
-enum VerticalFace:
-    Left
-    Right
-    Double
-    None
-
 enum TileMode:
     Horizontal
     Vertical
@@ -40,35 +28,6 @@ enum OffsetMode:
 enum SqueezeMode:
     Clip
     Scale
-
-class AutotileAnathomy:
-
-    public drawsLeft as bool
-    public drawsRight as bool
-    public drawsBottom as bool
-    public drawsTop as bool
-    public drawsCenter as bool
-
-    def constructor(left as bool, right as bool, bottom as bool, top as bool, center as bool):
-        drawsLeft   = left
-        drawsRight  = right
-        drawsBottom = bottom
-        drawsTop    = top
-        drawsCenter = center
-
-    def constructor(other as AutotileAnathomy):
-        drawsLeft   = other.drawsLeft
-        drawsRight  = other.drawsRight
-        drawsBottom = other.drawsBottom
-        drawsTop    = other.drawsTop
-        drawsCenter = other.drawsCenter
-
-    def Equals(other as AutotileAnathomy):
-        return other.drawsLeft   == drawsLeft and\
-               other.drawsRight  == drawsRight and\
-               other.drawsBottom == drawsBottom and\
-               other.drawsTop    == drawsTop and\
-               other.drawsCenter == drawsCenter
 
 class AutotileConnections (Generic.IEnumerable[of Autotile]):
 
@@ -155,7 +114,7 @@ class AutotileConnections (Generic.IEnumerable[of Autotile]):
     #         yield downRight if downRight
 
 [RequireComponent(MeshRenderer), RequireComponent(MeshFilter), ExecuteInEditMode]
-class Autotile (MonoBehaviour):
+class Autotile (AutotileBase):
 
     def OnDrawGizmos():
         Gizmos.DrawIcon(transform.position, "Autotile.png", true)
@@ -214,10 +173,6 @@ class Autotile (MonoBehaviour):
                             i_right_up, i_right_down, i_up,        i_up_left,
                             i_up_right, i_down,       i_down_left, i_down_right)
 
-    public tilesetKey as string
-    public tileMode as TileMode
-    public secondaryTileMode = TileMode.Centric
-    public squeezeMode = SqueezeMode.Clip
     public connections = AutotileConnections()
 
     public boxCollider as BoxCollider
@@ -228,13 +183,7 @@ class Autotile (MonoBehaviour):
     public useBoxColliderMarginBottom = true
 
     [System.NonSerialized]
-    public preview as Texture2D
-    [System.NonSerialized]
-    public previewTileMode as TileMode
-    [System.NonSerialized]
     public previewAirInfo as AirInfoState
-    [System.NonSerialized]
-    public previewAnathomy as AutotileAnathomy
 
     public leftScreen as Autotile
     public rightScreen as Autotile
@@ -266,10 +215,13 @@ class Autotile (MonoBehaviour):
             remote.connections.reverse[remote_c_index] = -1
             remote.Rebuild()
 
-    def ResetAllConnections():
-        for i in IndexSet.all:
+    def ResetConnections(indexes as (int)):
+        for i in indexes:
             Disconnect(i)
         dirty = true
+
+    def ResetAllConnections():
+        ResetConnections(IndexSet.all)
 
     def MoveConnection(curr as int, next as int):
         connections[next] = connections[curr]
@@ -340,24 +292,8 @@ class Autotile (MonoBehaviour):
     [SerializeField]
     private _airInfo = AirInfo(true, true, true, true, true, true, true, true)
 
-    public offset as Vector3
-    [SerializeField]
-    private _offsetMode = OffsetMode.Center
-
     [SerializeField]
     private applied_air_info = AirInfoState(true, true, true, true, true, true, true, true)
-    [SerializeField]
-    private applied_tileset_key = ""
-    [SerializeField]
-    private applied_scale = Vector3.one
-    [System.NonSerialized]
-    private applied_non_serialized_scale = Vector3.one
-    [SerializeField]
-    private applied_discrete_width = 1
-    [SerializeField]
-    private applied_discrete_height = 1
-    [SerializeField]
-    private applied_offset = Vector3.zero
     [SerializeField]
     private applied_box_collider_margin = 0.0f
     [SerializeField]
@@ -369,39 +305,7 @@ class Autotile (MonoBehaviour):
     [SerializeField]
     private applied_use_box_collider_margins_top = true
 
-    [System.NonSerialized]
-    public dirty = false
-    [System.NonSerialized]
-    public unsaved = false
-    [System.NonSerialized]
-    public unsavedMesh = false
-
     private favoredConnections = Generic.List of int()
-
-    offsetMode as OffsetMode:
-        set:
-            _offsetMode = value
-            prev_offset = offset
-
-            transform.position = transform.TransformPoint(offset)
-            if value == OffsetMode.Left:
-                offset = Vector3( 0.5f, 0.0f)
-            elif value == OffsetMode.Right:
-                offset = Vector3(-0.5f, 0.0f)
-            elif value == OffsetMode.Top:
-                offset = Vector3( 0.0f,-0.5f)
-            elif value == OffsetMode.Bottom:
-                offset = Vector3( 0.0f, 0.5f)
-            elif value == OffsetMode.Center:
-                offset = Vector3( 0.0f, 0.0f)
-            transform.position = transform.TransformPoint(-offset)
-
-            delta = offset - prev_offset
-            for t in GetComponentsInChildren of Transform(true):
-                unless t == transform:
-                    t.localPosition += delta
-        get:
-            return _offsetMode
 
     def Start():
         for index as int, neighbour as Autotile in enumerate(connections):
@@ -410,7 +314,8 @@ class Autotile (MonoBehaviour):
                     connections[index] = null
                     connections.reverse[index] = -1
 
-    def Awake():
+    override def Awake():
+        super()
         ifdef UNITY_EDITOR:
             unless Application.isPlaying:
                 applied_non_serialized_scale = applied_scale
@@ -430,21 +335,12 @@ class Autotile (MonoBehaviour):
 
                 boxCollider = GetComponent of BoxCollider()
                 Refresh()
-        ifdef not UNITY_EDITOR:
-            pass
 
     def Reset():
         GetComponent of MeshFilter().sharedMesh = Mesh()
         unsavedMesh = true
         boxCollider = GetComponent of BoxCollider()
         ApplyCentric()
-
-    def Update():
-        ifdef UNITY_EDITOR:
-            pos = transform.localPosition
-            unless pos.z == 0.0f:
-                pos.z = 0.0f
-                transform.localPosition = pos
 
     def ConnectionCanReachHorizontaly(c_index as int, worldPoint as Vector3) as bool:
         wp_local = transform.InverseTransformPoint(worldPoint)
@@ -531,16 +427,16 @@ class Autotile (MonoBehaviour):
             ensure:
                 conforming = false
 
-    public def DrawsLeftCorner() as bool:
+    override def DrawsLeftCorner() as bool:
         return true if not connections.left or connections.upLeft or connections.downLeft
         return false
-    public def DrawsRightCorner() as bool:
+    override def DrawsRightCorner() as bool:
         return true if not connections.right or connections.upRight or connections.downRight
         return false
-    public def DrawsBottomCorner() as bool:
+    override def DrawsBottomCorner() as bool:
         return true if not connections.down or connections.leftDown or connections.rightDown
         return false
-    public def DrawsTopCorner() as bool:
+    override def DrawsTopCorner() as bool:
         return true if not connections.up or connections.leftUp or connections.rightUp
         return false
 
@@ -964,88 +860,15 @@ class Autotile (MonoBehaviour):
                 ConnectConnectors(other, local_connections, remote_connections, first)
                 first = false
 
-    private static final singleVertices = (
-            Vector3(-0.5f, -0.5f), Vector3(-0.5f,  0.5f), Vector3( 0.5f,  0.5f),
-            Vector3( 0.5f,  0.5f), Vector3( 0.5f, -0.5f), Vector3(-0.5f, -0.5f),)
-    private static final doubleHorizontalVertices = (
-            Vector3(-0.5f, -0.5f),  Vector3(-0.5f,  0.5f),  Vector3( 0.0f,  0.5f),
-            Vector3( 0.0f,  0.5f),  Vector3( 0.0f, -0.5f),  Vector3(-0.5f, -0.5f),
-            Vector3( 0.0f, -0.5f),  Vector3( 0.0f,  0.5f),  Vector3( 0.5f,  0.5f),
-            Vector3( 0.5f,  0.5f),  Vector3( 0.5f, -0.5f),  Vector3( 0.0f, -0.5f),)
-    private static final doubleVerticalVertices = (
-            Vector3(-0.5f, -0.5f),  Vector3(-0.5f,  0.0f),  Vector3( 0.5f,  0.0f),
-            Vector3( 0.5f,  0.0f),  Vector3( 0.5f, -0.5f),  Vector3(-0.5f, -0.5f),
-            Vector3(-0.5f,  0.0f),  Vector3(-0.5f,  0.5f),  Vector3( 0.5f,  0.5f),
-            Vector3( 0.5f,  0.5f),  Vector3( 0.5f,  0.0f),  Vector3(-0.5f,  0.0f),)
-    private static final singleTriangles = ( 0, 1, 2, 3, 4, 5, )
-    private static final doubleTriangles = ( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, )
-    private static final tripleTriangles = ( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, )
-
-    private static def TileUVs(t as Tile) as (Vector2):
-        return TileUVs(t, 1.0f, TileDirection.Horizontal)
-
-    private static def TileUVs(t as Tile, fraction as single, direction as TileDirection) as (Vector2):
-        if direction == TileDirection.Horizontal:
-            xMin = t.atlasLocation.xMin
-            xMax = (1.0f - fraction) * xMin + fraction * t.atlasLocation.xMax
-            yMin = t.atlasLocation.yMin
-            yMax = t.atlasLocation.yMax
-        else:
-            xMin = t.atlasLocation.xMin
-            xMax = t.atlasLocation.xMax
-            yMin = t.atlasLocation.yMin
-            yMax = (1.0f - fraction) * yMin + fraction * t.atlasLocation.yMax
-        if t.flipped:
-            if t.direction == TileFlipDirection.Horizontal:
-                result = (
-                    Vector2(xMax, yMin),
-                    Vector2(xMax, yMax),
-                    Vector2(xMin, yMax),
-                    Vector2(xMin, yMax),
-                    Vector2(xMin, yMin),
-                    Vector2(xMax, yMin),)
-            elif t.direction == TileFlipDirection.Vertical:
-                result = (
-                    Vector2(xMin, yMax),
-                    Vector2(xMin, yMin),
-                    Vector2(xMax, yMin),
-                    Vector2(xMax, yMin),
-                    Vector2(xMax, yMax),
-                    Vector2(xMin, yMax),)
-            else: # Both
-                result = (
-                    Vector2(xMax, yMax),
-                    Vector2(xMax, yMin),
-                    Vector2(xMin, yMin),
-                    Vector2(xMin, yMin),
-                    Vector2(xMin, yMax),
-                    Vector2(xMax, yMax),)
-        else:
-            result = (
-                Vector2(xMin, yMin),
-                Vector2(xMin, yMax),
-                Vector2(xMax, yMax),
-                Vector2(xMax, yMax),
-                Vector2(xMax, yMin),
-                Vector2(xMin, yMin),)
-        if t.rotated:
-            if t.rotation == TileRotation.CW:
-                return (result[1], result[2], result[4], result[4], result[5], result[1])
-            elif t.rotation == TileRotation.CCW:
-                return (result[4], result[5], result[1], result[1], result[2], result[4])
-            else:
-                return (result[3], result[4], result[5], result[0], result[1], result[2])
-        else:
-            return result
-
     def ApplyHorizontalTile():
         unless Mathf.Abs(transform.localScale.x) < 0.001f:
             left = getLeftCorner()
             right = getRightCorner()
             mf = GetComponent of MeshFilter()
-            mf.sharedMesh.vertices = OffsetVertices(Autotile.doubleHorizontalVertices)
-            mf.sharedMesh.triangles = Autotile.doubleTriangles
-            mf.sharedMesh.uv = Autotile.TileUVs(left) + Autotile.TileUVs(right)
+            mf.sharedMesh.Clear()
+            mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
+            mf.sharedMesh.triangles = AutotileBase.doubleTriangles
+            mf.sharedMesh.uv = AutotileBase.TileUVs(left) + AutotileBase.TileUVs(right)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -1075,41 +898,19 @@ class Autotile (MonoBehaviour):
             boxCollider.size.x = width
             boxCollider.size.y = height
 
-    def OffsetVertices2(vertices as (Vector2)) as (Vector2):
-        return array(Vector2, (Vector2(offset.x + v.x, offset.y + v.y) for v in vertices))
-
-    def OffsetVertices2(vertices as (Vector3)) as (Vector2):
-        return array(Vector2, (offset + v for v in vertices))
-
-    def OffsetVertices(vertices as (Vector3)) as (Vector3):
-        return array(Vector3, (offset + v for v in vertices))
-
-    def OffsetPosition() as Vector3:
-        return transform.TransformPoint(offset)
-
-    def TileSlice(low as single, high as single, d as TileDirection) as (Vector3):
-        if d == TileDirection.Horizontal:
-            return OffsetVertices((
-                Vector3(low,  -0.5f),  Vector3(low,   0.5f),  Vector3(high,  0.5f),
-                Vector3(high,  0.5f),  Vector3(high, -0.5f),  Vector3(low,  -0.5f),))
-        else:
-            return OffsetVertices((
-                Vector3(-0.5f, low),  Vector3(-0.5f, high), Vector3( 0.5f, high),
-                Vector3( 0.5f, high), Vector3( 0.5f, low),  Vector3(-0.5f, low),))
-
     def ApplyLongTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]], direction as TileDirection):
         if direction == TileDirection.Horizontal:
             width = transform.localScale.x
             black_center = true not in (_airInfo.down, _airInfo.up)
-            draw_first_corner = DrawsLeftCorner()
-            draw_last_corner = DrawsRightCorner()
+            draw_first_corner = DrawsLeftCorner() and useLeftCorner
+            draw_last_corner = DrawsRightCorner() and useRightCorner
             left = getLeftCorner() if draw_first_corner
             right = getRightCorner() if draw_last_corner
         else:
             width = transform.localScale.y
             black_center = true not in (_airInfo.left, _airInfo.right)
-            draw_first_corner = DrawsBottomCorner()
-            draw_last_corner = DrawsTopCorner()
+            draw_first_corner = DrawsBottomCorner() and useBottomCorner
+            draw_last_corner = DrawsTopCorner() and useTopCorner
             left = getBottomCorner() if draw_first_corner
             right = getTopCorner() if draw_last_corner
 
@@ -1134,7 +935,7 @@ class Autotile (MonoBehaviour):
         if draw_first_corner:
             firstSplit = -0.5f + cornerSize
             vertices = TileSlice(-0.5f, firstSplit, direction)
-            uvs = Autotile.TileUVs(left)
+            uvs = AutotileBase.TileUVs(left)
             tilesSpent = 1
         else:
             firstSplit = -0.5f
@@ -1151,6 +952,7 @@ class Autotile (MonoBehaviour):
             splitWidth = Mathf.Ceil(spareSpace) / (width * centerUnits)
         else:
             splitWidth = spareSpace / (width * centerUnits)
+
         currentSplit = firstSplit
         currentSplitIndex = 0
         ctEnumerator = centerTiles.GetEnumerator()
@@ -1170,21 +972,22 @@ class Autotile (MonoBehaviour):
                     else:
                         fractionOfTile = 1.0f
                     vertices += TileSlice(currentSplit, lastSplit, direction)
-                    uvs += Autotile.TileUVs(tile, fractionOfTile, direction)
+                    uvs += AutotileBase.TileUVs(tile, fractionOfTile, direction)
                 else:
                     nextSplit = currentSplit + splitWidth * tileWidth
                     vertices += TileSlice(currentSplit, nextSplit, direction)
-                    uvs += Autotile.TileUVs(tile)
+                    uvs += AutotileBase.TileUVs(tile)
 
                 tilesSpent += 1
                 currentSplit = nextSplit
 
         if draw_last_corner:
             vertices += TileSlice(lastSplit, 0.5f, direction)
-            uvs += Autotile.TileUVs(right)
+            uvs += AutotileBase.TileUVs(right)
             tilesSpent += 1
 
         mf = GetComponent of MeshFilter()
+        mf.sharedMesh.Clear()
         mf.sharedMesh.vertices = vertices
         mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
         mf.sharedMesh.uv = uvs
@@ -1194,35 +997,32 @@ class Autotile (MonoBehaviour):
         AdjustBoxCollider()
 
     def ApplyHorizontalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]):
-        ApplyLongTile(
-            centerTiles,
-            TileDirection.Horizontal)
+        ApplyLongTile(centerTiles, TileDirection.Horizontal)
 
     def ApplyVerticalTile():
         unless Mathf.Abs(transform.localScale.y) < 0.001f:
             bottom = getBottomCorner()
             top = getTopCorner()
             mf = GetComponent of MeshFilter()
-            mf.sharedMesh.vertices = OffsetVertices(Autotile.doubleVerticalVertices)
-            mf.sharedMesh.triangles = Autotile.doubleTriangles
-            mf.sharedMesh.uv = Autotile.TileUVs(bottom) + Autotile.TileUVs(top)
+            mf.sharedMesh.Clear()
+            mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleVerticalVertices)
+            mf.sharedMesh.triangles = AutotileBase.doubleTriangles
+            mf.sharedMesh.uv = AutotileBase.TileUVs(bottom) + AutotileBase.TileUVs(top)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
             AdjustBoxCollider()
 
     def ApplyVerticalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, Tile]]):
-        ApplyLongTile(
-            centerTiles,
-            TileDirection.Vertical)
+        ApplyLongTile(centerTiles, TileDirection.Vertical)
 
     def ApplyTile(tile as Tile):
-        uvs = Autotile.TileUVs(tile)
+        uvs = AutotileBase.TileUVs(tile)
         mf = GetComponent of MeshFilter()
         if mf.sharedMesh:
             mf.sharedMesh.Clear()
-            mf.sharedMesh.vertices = OffsetVertices(Autotile.singleVertices)
-            mf.sharedMesh.triangles = Autotile.singleTriangles
+            mf.sharedMesh.vertices = OffsetVertices(AutotileBase.singleVertices)
+            mf.sharedMesh.triangles = AutotileBase.singleTriangles
             mf.sharedMesh.uv = uvs
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
@@ -1258,21 +1058,6 @@ class Autotile (MonoBehaviour):
         return tileMode == TileMode.Horizontal and CanScaleHorizontalyToCentric() or\
                tileMode == TileMode.Vertical   and CanScaleVerticalyToCentric() or\
                tileMode == TileMode.Centric
-
-    def CornersNeeded() as int:
-        h_corners = 1 if DrawsLeftCorner()
-        h_corners += 1 if DrawsRightCorner()
-        v_corners = 1 if DrawsBottomCorner()
-        v_corners += 1 if DrawsTopCorner()
-
-        if tileMode == TileMode.Horizontal:
-            return h_corners
-        elif tileMode == TileMode.Vertical:
-            return v_corners
-        elif h_corners or v_corners:
-            return 1
-        else:
-            return 0
 
     public class AirInfo:
         #                                       X_____X
@@ -1408,7 +1193,7 @@ class Autotile (MonoBehaviour):
                 return AutotileConfig.config.sets[tilesetKey].centerSets.smallestKey
             else:
                 return 0
-        else: # if tileMode == TileMode.Horizontal:
+        else: # if tileMode == TileMode.Vertical:
             if applied_discrete_height > CornersNeeded():
                 return AutotileConfig.config.sets[tilesetKey].centerSets.smallestKey
             else:
@@ -1428,7 +1213,7 @@ class Autotile (MonoBehaviour):
                 return centerSet.downFace
             else:
                 return tileSet.corners.bbbb
-        else: # if tileMode == TileMode.Horizontal:
+        else: # if tileMode == TileMode.Vertical:
             if _airInfo.left:
                 if _airInfo.right:
                     return centerSet.doubleVerticalFace
@@ -1440,45 +1225,45 @@ class Autotile (MonoBehaviour):
                 return tileSet.corners.bbbb
 
     def getCentricCorner() as Tile:
-        w = getVerticalConnectionClassification(  connections.up,    _airInfo.leftUp,    _airInfo.rightUp)
-        x = getHorizontalConnectionClassification(connections.right, _airInfo.rightDown, _airInfo.rightUp)
-        y = getVerticalConnectionClassification(  connections.down,  _airInfo.leftDown,  _airInfo.rightDown)
-        z = getHorizontalConnectionClassification(connections.left,  _airInfo.leftDown,  _airInfo.leftUp)
+        w = getVerticalConnectionClassification(  connections.up,         _airInfo.leftUp,    _airInfo.rightUp)
+        x = getHorizontalConnectionClassification(connections.right,      _airInfo.rightDown, _airInfo.rightUp)
+        y = getVerticalConnectionClassification(  connections.down,       _airInfo.leftDown,  _airInfo.rightDown)
+        z = getHorizontalConnectionClassification(connections.left,       _airInfo.leftDown,  _airInfo.leftUp)
         return cornerByName("$w$x$y$z")
 
     def getRightCorner() as Tile:
-        w = getVerticalConnectionClassification(  connections.upRight,   _airInfo.up,        _airInfo.rightUp)
-        x = getHorizontalConnectionClassification(connections.right,     _airInfo.rightDown, _airInfo.rightUp)
-        y = getVerticalConnectionClassification(  connections.downRight, _airInfo.down,      _airInfo.rightDown)
+        w = getVerticalConnectionClassification(  connections.upRight,    _airInfo.up,        _airInfo.rightUp)
+        x = getHorizontalConnectionClassification(connections.right,      _airInfo.rightDown, _airInfo.rightUp)
+        y = getVerticalConnectionClassification(  connections.downRight,  _airInfo.down,      _airInfo.rightDown)
         z = HFace()
         return cornerByName("$w$x$y$z")
 
     def getLeftCorner() as Tile:
-        w = getVerticalConnectionClassification(  connections.upLeft,   _airInfo.leftUp,   _airInfo.up)
+        w = getVerticalConnectionClassification(  connections.upLeft,     _airInfo.leftUp,    _airInfo.up)
         x = HFace()
-        y = getVerticalConnectionClassification(  connections.downLeft, _airInfo.leftDown, _airInfo.down)
-        z = getHorizontalConnectionClassification(connections.left,     _airInfo.leftDown, _airInfo.leftUp)
+        y = getVerticalConnectionClassification(  connections.downLeft,   _airInfo.leftDown,  _airInfo.down)
+        z = getHorizontalConnectionClassification(connections.left,       _airInfo.leftDown,  _airInfo.leftUp)
         return cornerByName("$w$x$y$z")
 
     def getTopCorner() as Tile:
-        w = getVerticalConnectionClassification(  connections.up,      _airInfo.leftUp, _airInfo.rightUp)
-        x = getHorizontalConnectionClassification(connections.rightUp, _airInfo.right,  _airInfo.rightUp)
+        w = getVerticalConnectionClassification(  connections.up,        _airInfo.leftUp,     _airInfo.rightUp)
+        x = getHorizontalConnectionClassification(connections.rightUp,   _airInfo.right,      _airInfo.rightUp)
         y = VFace()
-        z = getHorizontalConnectionClassification(connections.leftUp,  _airInfo.left,   _airInfo.leftUp)
+        z = getHorizontalConnectionClassification(connections.leftUp,    _airInfo.left,       _airInfo.leftUp)
         return cornerByName("$w$x$y$z")
 
     def getBottomCorner() as Tile:
         w = VFace()
-        x = getHorizontalConnectionClassification(connections.rightDown, _airInfo.rightDown, _airInfo.right)
-        y = getVerticalConnectionClassification(  connections.down,      _airInfo.leftDown,  _airInfo.rightDown)
-        z = getHorizontalConnectionClassification(connections.leftDown,  _airInfo.leftDown,  _airInfo.left)
+        x = getHorizontalConnectionClassification(connections.rightDown, _airInfo.rightDown,  _airInfo.right)
+        y = getVerticalConnectionClassification(  connections.down,      _airInfo.leftDown,   _airInfo.rightDown)
+        z = getHorizontalConnectionClassification(connections.leftDown,  _airInfo.leftDown,   _airInfo.left)
         return cornerByName("$w$x$y$z")
 
     def ApplyHorizontal(dim as int):
         try:
             tileMode = secondaryTileMode = TileMode.Horizontal
             UseHorizontalConnections()
-            if dim == 2 and not (connections.left or connections.right):
+            if dim == 2 and useLeftCorner and useRightCorner and not (connections.left or connections.right):
                 ApplyHorizontalTile()
             else:
                 if_00_01_10_11 _airInfo.down, _airInfo.up:
@@ -1495,7 +1280,7 @@ class Autotile (MonoBehaviour):
         try:
             tileMode = secondaryTileMode = TileMode.Vertical
             UseVerticalConnections()
-            if dim == 2 and not (connections.down or connections.up):
+            if dim == 2 and useTopCorner and useBottomCorner and not (connections.down or connections.up):
                 ApplyVerticalTile()
             else:
                 if_00_01_10_11 _airInfo.left, _airInfo.right:
@@ -1546,7 +1331,7 @@ class Autotile (MonoBehaviour):
         except e as System.ArgumentNullException:
             return
 
-    def ApplyScale():
+    override def ApplyScale():
         x = Mathf.Max(1f, Mathf.Round(transform.localScale.x)) cast int
         y = Mathf.Max(1f, Mathf.Round(transform.localScale.y)) cast int
         if squeezeMode == SqueezeMode.Clip:
@@ -1601,7 +1386,7 @@ class Autotile (MonoBehaviour):
             applied_air_info = airInfo
             dirty = true
 
-    def SuggestScales() as Vector3:
+    override def SuggestScales() as Vector3:
         h = secondaryTileMode == TileMode.Horizontal
         v = secondaryTileMode == TileMode.Vertical
         centric = tileMode == TileMode.Centric
@@ -1623,7 +1408,8 @@ class Autotile (MonoBehaviour):
         return transform.localScale
 
     private workingOnConnections = false
-    def OnDestroy():
+    override def OnDestroy():
+        super()
         unless workingOnConnections:
             try:
                 workingOnConnections = true
@@ -1635,16 +1421,6 @@ class Autotile (MonoBehaviour):
                 workingOnConnections = false
 
         DestroyImmediate( GetComponent of MeshFilter().sharedMesh, true )
-
-    def ApplyOffset():
-        if applied_offset != offset:
-            applied_offset = offset
-            dirty = true
-
-    def ApplyTilesetKey():
-        if applied_tileset_key != tilesetKey:
-            applied_tileset_key = tilesetKey
-            dirty = true
 
     def ApplyBoxColliderMargin():
         if applied_box_collider_margin != boxColliderMargin or\
@@ -1659,16 +1435,8 @@ class Autotile (MonoBehaviour):
             applied_use_box_collider_margins_top    = useBoxColliderMarginTop
             dirty = true
 
-    def Refresh():
+    override def Refresh():
         boxCollider = GetComponent of BoxCollider() unless boxCollider
         ApplyAirInfo()
         ApplyBoxColliderMargin()
-        ApplyTilesetKey()
-        ApplyOffset()
-        ApplyScale()
-
-    [ContextMenu("Force Rebuild")]
-    def Rebuild():
-        dirty = true
-        transform.localScale = SuggestScales()
-        Refresh()
+        super()

@@ -11,3 +11,4 @@ class AutotileConfig (ScriptableObject):
             return autotileConfig
 
     public sets = AutotileSetDatabase()
+    public animationSets = AutotileAnimationSetDatabase()

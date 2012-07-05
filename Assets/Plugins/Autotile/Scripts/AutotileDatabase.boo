@@ -26,7 +26,7 @@ class Tile:
     public rotated = false
     public rotation = TileRotation.CW
 
-    def Duplicate() as Tile:
+    virtual def Duplicate() as Tile:
         result = Tile()
         result.atlasLocation = Rect(
             atlasLocation.x,
@@ -323,30 +323,7 @@ class AutotileCenterSetDatabase (IEnumerable[KeyValuePair[of int, AutotileCenter
         return myGetEnumerator()
 
 [System.Serializable]
-class AutotileSet:
-    [System.NonSerialized]
-    public name = ""
-    [System.NonSerialized]
-    public show = false
-
-    [System.NonSerialized]
-    public newCandidate = 2
-
-    [System.NonSerialized]
-    public showDuplicateOption = false
-    [System.NonSerialized]
-    public duplicateCandidate = ""
-
-    [System.NonSerialized]
-    public showSettings = false
-    public tileSize = 128
-    public material as Material
-
-    [System.NonSerialized]
-    public preview as Texture2D
-
-    [System.NonSerialized]
-    public showRemoveOption = false
+class AutotileSet (AutotileBaseSet):
 
     [System.NonSerialized]
     public showCenterSets = false
@@ -358,7 +335,7 @@ class AutotileSet:
     public showCorners = false
     public corners = AutotileCorners()
 
-    def Duplicate() as AutotileSet:
+    def Duplicate() as AutotileBaseSet:
         result = AutotileSet()
         result.material = material
         result.tileSize = tileSize
@@ -371,6 +348,8 @@ class AutotileSet:
         return result
 
 class AutotileSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileSet]]):
+    public show = false
+
     [SerializeField]
     private keys = List of string()
 
