@@ -1,6 +1,19 @@
 import UnityEngine
 import System.Collections
 
+macro defCorner(cornerType as Boo.Lang.Compiler.Ast.ReferenceExpression):
+    fnName = Boo.Lang.Compiler.Ast.ReferenceExpression("get" + cornerType.Name[0:1].ToUpper() + cornerType.Name[1:] + "Corner")
+    yield [|
+        private def $fnName() as UVAnimation:
+            animSet = AutotileConfig.config.animationSets[tilesetKey]
+            framesPerSecond = animSet.framesPerSecond
+            sources = animSet.corners.$cornerType
+            result = UVAnimation(array(UVFrame, sources.Length))
+            for i as int, s as AnimationTile in enumerate(sources):
+                result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s))
+            return result
+    |]
+
 [RequireComponent(MeshRenderer), RequireComponent(MeshFilter), ExecuteInEditMode]
 class AutotileAnimation (AutotileBase):
 
@@ -8,15 +21,34 @@ class AutotileAnimation (AutotileBase):
         Gizmos.DrawIcon(transform.position, "AutotileAnimation.png", true)
 
     public currentFrame = 0
-    public frameDuration = 1f
 
     [System.NonSerialized]
     private lastTime = 0f
 
+    framesPerSecond as single:
+        set:
+            _frameDuration = 1f / Mathf.Max(0.01f, value)
+            _framesPerSecond = value
+        get:
+            return _framesPerSecond
+
+    public _framesPerSecond = 50f
+    public _frameDuration = 1f
+
+    public localMesh as Mesh
+
+    def tryLoadFramesPerSecond():
+        try:
+            framesPerSecond = AutotileConfig.config.animationSets[tilesetKey].framesPerSecond
+        except e as Generic.KeyNotFoundException:
+            return
+        except e as System.ArgumentNullException:
+            return
+
     override def Awake():
         super()
-        frameDuration = 1f / Mathf.Max(0.01f, AutotileConfig.config.animationSets[tilesetKey].framesPerSecond)
         ifdef UNITY_EDITOR:
+            tryLoadFramesPerSecond()
             unless Application.isPlaying:
                 applied_non_serialized_scale = applied_scale
                 mf = GetComponent of MeshFilter()
@@ -24,12 +56,14 @@ class AutotileAnimation (AutotileBase):
                 if sm:
                     for t in FindObjectsOfType(AutotileAnimation):
                         if t != self and sm == t.GetComponent of MeshFilter().sharedMesh:
-                            mf.sharedMesh = Mesh()
+                            localMesh = Mesh()
+                            mf.sharedMesh = localMesh
                             unsavedMesh = true
                             dirty = true
                             break
                 else:
-                    mf.mesh = Mesh()
+                    localMesh = Mesh()
+                    mf.mesh = localMesh
                     unsavedMesh = true
                     dirty = true
 
@@ -37,14 +71,14 @@ class AutotileAnimation (AutotileBase):
 
     override def Update():
         super()
-        # if Time.time > lastTime + frameDuration:
-        #     currentFrame %= int.MaxValue
-        #     currentFrame += 1
-        #     lastTime = Time.time
-        #     RefreshUVS()
+        if Time.time > lastTime + _frameDuration:
+            lastTime = Time.time
+            localMesh.uv = cache.next_uvs()
+            currentFrame = (currentFrame + 1) % cache.lcm
 
     def Reset():
-        GetComponent of MeshFilter().sharedMesh = Mesh()
+        localMesh = Mesh()
+        GetComponent of MeshFilter().sharedMesh = localMesh
         unsavedMesh = true
         ApplyCentric()
 
@@ -57,20 +91,106 @@ class AutotileAnimation (AutotileBase):
     override def DrawsTopCorner() as bool:
         return true
 
-    def ApplyHorizontalTile():
-        unless Mathf.Abs(transform.localScale.x) < 0.001f:
-            left = getLeftCorner()
-            right = getRightCorner()
-            mf = GetComponent of MeshFilter()
-            mf.sharedMesh.Clear()
-            mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
-            mf.sharedMesh.triangles = AutotileBase.doubleTriangles
-            mf.sharedMesh.uv = AutotileBase.TileUVs(left) + AutotileBase.TileUVs(right)
-            mf.sharedMesh.RecalculateNormals()
-            mf.sharedMesh.RecalculateBounds()
-            unsavedMesh = true
 
-    def ApplyLongTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, AnimationTile]], direction as TileDirection):
+    ## ---- UV Building ---- ##
+
+    private class UVFrame:
+        # /---\
+        # |   |  One frame
+        # \---/
+        public duration as int
+        public uvs as (Vector2)
+
+        def constructor(d as int, u as (Vector2)):
+            duration = d
+            uvs = u
+
+    private class UVAnimation:
+        # /---\
+        # | ~ |  One animation
+        # \---/
+        public frames as (UVFrame)
+
+        totalLength as int:
+            get:
+                sum = 0
+                for f in frames:
+                    sum += f.duration
+                return sum
+
+        def constructor(f as (UVFrame)):
+            frames = f
+
+        def unrolledUVs(dist as int) as ((Vector2)):
+            uvs = List[of (Vector2)]()
+            for f in frames:
+                for _ in range(f.duration):
+                    uvs.Add(f.uvs)
+            current = 0
+            localDist = uvs.Count
+            result = List[of (Vector2)]()
+            for _ in range(dist):
+                result.Add(uvs[current])
+                current = (current + 1) % localDist
+            return array(typeof((Vector2)), result)
+
+    private class UVAnimationCache:
+        # /---+-------+-------+---\
+        # | ~ |   ~   |   ~   | ~ |  One complete tile animation
+        # \---+-------+-------+---/
+        [Getter(lcm)]
+        private _lcm as int
+        private currentFrame as int
+        private built as bool
+        private uvs as ((Vector2))
+
+        private def _build():
+            built = true
+            _lcm = Math.LCM(array(int, (a.totalLength for a in _animations)))
+
+            by_animation = array(typeof(((Vector2))), _animations.Length)
+            for i as int, v as UVAnimation in enumerate(_animations):
+                by_animation[i] = v.unrolledUVs(_lcm)
+
+            all_animations = List[of (Vector2)]()
+            for i in range(_lcm):
+                all_uv_coords = List of Vector2()
+                for f in by_animation:
+                    for v in f[i]:
+                        all_uv_coords.Add(v)
+                all_animations.Add(array(Vector2, all_uv_coords))
+            uvs = array(typeof((Vector2)), all_animations)
+
+        animations as (UVAnimation):
+            set:
+                _animations = value
+                built = false
+
+        [SerializeField]
+        private _animations as (UVAnimation)
+
+        def next_uvs() as (Vector2):
+            _build() unless built
+            result = uvs[currentFrame]
+            currentFrame = (currentFrame + 1) % _lcm
+            return result
+
+    [SerializeField]
+    private cache = UVAnimationCache()
+
+    ## -- UV Building End -- ##
+
+    protected static def TileUVs(t as (AnimationTile)) as UVAnimation:
+        return TileUVs(t, 1.0f, TileDirection.Horizontal)
+
+    protected static def TileUVs(t as (AnimationTile), fraction as single, direction as TileDirection) as UVAnimation:
+        result = UVAnimation(array(UVFrame, t.Length))
+        for i as int, s as AnimationTile in enumerate(t):
+            result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s))
+        return result
+
+
+    def ApplyLongTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]], direction as TileDirection):
         if direction == TileDirection.Horizontal:
             width = transform.localScale.x
             draw_first_corner = DrawsLeftCorner() and useLeftCorner
@@ -100,10 +220,12 @@ class AutotileAnimation (AutotileBase):
 
         cornerSize = 1f / width
 
+        allFrames = List of UVAnimation()
         if draw_first_corner:
             firstSplit = -0.5f + cornerSize
             vertices = TileSlice(-0.5f, firstSplit, direction)
-            uvs = AutotileBase.TileUVs(left)
+            uvs = left.frames[0].uvs
+            allFrames.Add(left)
             tilesSpent = 1
         else:
             firstSplit = -0.5f
@@ -140,20 +262,26 @@ class AutotileAnimation (AutotileBase):
                     else:
                         fractionOfTile = 1.0f
                     vertices += TileSlice(currentSplit, lastSplit, direction)
-                    uvs += AutotileBase.TileUVs(tile, fractionOfTile, direction)
+                    anim = TileUVs(tile, fractionOfTile, direction)
+                    uvs += anim.frames[0].uvs
+                    allFrames.Add(anim)
                 else:
                     nextSplit = currentSplit + splitWidth * tileWidth
                     vertices += TileSlice(currentSplit, nextSplit, direction)
-                    uvs += AutotileBase.TileUVs(tile)
+                    anim = TileUVs(tile, fractionOfTile, direction)
+                    uvs += anim.frames[0].uvs
+                    allFrames.Add(anim)
 
                 tilesSpent += 1
                 currentSplit = nextSplit
 
         if draw_last_corner:
             vertices += TileSlice(lastSplit, 0.5f, direction)
-            uvs += AutotileBase.TileUVs(right)
+            uvs += right.frames[0].uvs
+            allFrames.Add(right)
             tilesSpent += 1
 
+        cache.animations = array(UVAnimation, allFrames)
         mf = GetComponent of MeshFilter()
         mf.sharedMesh.Clear()
         mf.sharedMesh.vertices = vertices
@@ -163,27 +291,44 @@ class AutotileAnimation (AutotileBase):
         mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
 
-    def ApplyHorizontalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, AnimationTile]]):
+    def ApplyHorizontalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]]):
         ApplyLongTile(centerTiles, TileDirection.Horizontal)
+
+    def ApplyHorizontalTile():
+        unless Mathf.Abs(transform.localScale.x) < 0.001f:
+            left = getLeftCorner()
+            right = getRightCorner()
+            cache.animations = (left, right)
+            mf = GetComponent of MeshFilter()
+            mf.sharedMesh.Clear()
+            mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
+            mf.sharedMesh.triangles = AutotileBase.doubleTriangles
+            mf.sharedMesh.uv = left.frames[0].uvs + right.frames[0].uvs
+            mf.sharedMesh.RecalculateNormals()
+            mf.sharedMesh.RecalculateBounds()
+            unsavedMesh = true
+
+    def ApplyVerticalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]]):
+        ApplyLongTile(centerTiles, TileDirection.Vertical)
 
     def ApplyVerticalTile():
         unless Mathf.Abs(transform.localScale.y) < 0.001f:
             bottom = getBottomCorner()
             top = getTopCorner()
+            cache.animations = (bottom, top)
             mf = GetComponent of MeshFilter()
             mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleVerticalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
-            mf.sharedMesh.uv = AutotileBase.TileUVs(bottom) + AutotileBase.TileUVs(top)
+            mf.sharedMesh.uv = bottom.frames[0].uvs + top.frames[0].uvs
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
 
-    def ApplyVerticalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, AnimationTile]]):
-        ApplyLongTile(centerTiles, TileDirection.Vertical)
-
-    def ApplyTile(tile as Tile):
-        uvs = AutotileBase.TileUVs(tile)
+    def ApplyTile(tile as (AnimationTile)):
+        anim = TileUVs(tile)
+        cache.animations = (anim,)
+        uvs = anim.frames[0].uvs
         mf = GetComponent of MeshFilter()
         if mf.sharedMesh:
             mf.sharedMesh.Clear()
@@ -220,20 +365,11 @@ class AutotileAnimation (AutotileBase):
         else: # if tileMode == TileMode.Vertical:
             return animationSet.verticalFaces[currentFrame]
 
-    def getCentricCorner() as Tile:
-        return AutotileConfig.config.animationSets[tilesetKey].corners.center[0]
-
-    def getRightCorner() as Tile:
-        return AutotileConfig.config.animationSets[tilesetKey].corners.right[0]
-
-    def getLeftCorner() as Tile:
-        return AutotileConfig.config.animationSets[tilesetKey].corners.left[0]
-
-    def getTopCorner() as Tile:
-        return AutotileConfig.config.animationSets[tilesetKey].corners.top[0]
-
-    def getBottomCorner() as Tile:
-        return AutotileConfig.config.animationSets[tilesetKey].corners.bottom[0]
+    defCorner centric
+    defCorner right
+    defCorner left
+    defCorner top
+    defCorner bottom
 
     def ApplyHorizontal(dim as int):
         try:
@@ -262,23 +398,29 @@ class AutotileAnimation (AutotileBase):
     def ApplyCentric():
         try:
             tileMode = TileMode.Centric
-            ApplyTile(getCentricCorner())
+            animSet = AutotileConfig.config.animationSets[tilesetKey]
+            framesPerSecond = animSet.framesPerSecond
+            ApplyTile(animSet.corners.centric)
         except e as Generic.KeyNotFoundException:
             return
         except e as System.ArgumentNullException:
             return
 
 
-    private def DescendingHorizontalFaces(animationSet as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, AnimationTile]]:
-        tileset = Generic.SortedDictionary[of int, AnimationTile](Autotile.Descending())
-        for kv as Generic.KeyValuePair[of int, AutotileAnimationTileset] in AutotileConfig.config.animationSets[animationSet].sets:
-            tileset[kv.Key] = kv.Value.horizontalFaces[currentFrame]
+    private def DescendingHorizontalFaces(animationSet as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]]:
+        tileset = Generic.SortedDictionary[of int, (AnimationTile)](Autotile.Descending())
+        animSet = AutotileConfig.config.animationSets[animationSet]
+        framesPerSecond = animSet.framesPerSecond
+        for kv as Generic.KeyValuePair[of int, AutotileAnimationTileset] in animSet.sets:
+            tileset[kv.Key] = kv.Value.horizontalFaces
         return tileset
 
-    private def DescendingVerticalFaces(animationSet as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, AnimationTile]]:
-        tileset = Generic.SortedDictionary[of int, AnimationTile](Autotile.Descending())
-        for kv as Generic.KeyValuePair[of int, AutotileAnimationTileset] in AutotileConfig.config.animationSets[animationSet].sets:
-            tileset[kv.Key] = kv.Value.verticalFaces[currentFrame]
+    private def DescendingVerticalFaces(animationSet as string) as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]]:
+        tileset = Generic.SortedDictionary[of int, (AnimationTile)](Autotile.Descending())
+        animSet = AutotileConfig.config.animationSets[animationSet]
+        framesPerSecond = animSet.framesPerSecond
+        for kv as Generic.KeyValuePair[of int, AutotileAnimationTileset] in animSet.sets:
+            tileset[kv.Key] = kv.Value.verticalFaces
         return tileset
 
     override def ApplyScale():
@@ -343,3 +485,7 @@ class AutotileAnimation (AutotileBase):
     override def OnDestroy():
         super()
         DestroyImmediate( GetComponent of MeshFilter().sharedMesh, true )
+
+    override def ApplyTilesetKey():
+        super()
+        tryLoadFramesPerSecond()

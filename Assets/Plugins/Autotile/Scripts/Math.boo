@@ -1,5 +1,30 @@
 import UnityEngine
 
+static class Math:
+
+    public def GCD(l as (int)) as int:
+        return l[0] if l.Length == 1
+        return GCD(l[0], l[1:])
+
+    public def GCD(a as int, l as (int)) as int:
+        return GCD(a, l[0]) if l.Length == 1
+        return GCD(GCD(a, l[0]), l[1:])
+
+    public def GCD(a as int, b as int) as int:
+        return a unless b
+        return GCD(b, (a % b))
+
+    public def LCM(l as (int)) as int:
+        return l[0] if l.Length == 1
+        return LCM(l[0], l[1:])
+
+    public def LCM(a as int, l as (int)) as int:
+        return LCM(a, l[0]) if l.Length == 1
+        return LCM(LCM(a, l[0]), l[1:])
+
+    public def LCM(a as int, b as int) as int:
+        return ((a * b) / GCD(a, b))
+
 static class MathOfPlanes:
 
     def PointInTri(a as Vector2, b as Vector2, c as Vector2, p as Vector2) as bool:

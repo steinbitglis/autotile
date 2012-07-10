@@ -206,8 +206,8 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                     Undo.RegisterUndo(config, "Set Rotated in $(prefix)$n")
                     unless t.rotation == TileRotation._180:
                         buf = t.atlasLocation.width
-                        t.atlasLocation.width = t.atlasLocation.height
-                        t.atlasLocation.height = buf
+                        t.atlasLocation.width = t.atlasLocation.height / aspect
+                        t.atlasLocation.height = buf * aspect
                     t.rotated = newRotated
                 if t.rotated:
                     newRotation = EditorGUILayout.EnumPopup("Rotation", t.rotation)
@@ -216,8 +216,8 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         if newRotation == TileRotation._180 cast System.Enum or\
                            t.rotation == TileRotation._180:
                             buf = t.atlasLocation.width
-                            t.atlasLocation.width = t.atlasLocation.height
-                            t.atlasLocation.height = buf
+                            t.atlasLocation.width = t.atlasLocation.height / aspect
+                            t.atlasLocation.height = buf * aspect
                         t.rotation = newRotation
                 EditorGUI.indentLevel -= 1
 
@@ -238,24 +238,16 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             nWidth = newSize cast single / mt.width cast single
             nHeight = newSize cast single / mt.height cast single
             for tile in s.corners:
-                tile.atlasLocation.width = nWidth
-                tile.atlasLocation.height = nHeight
+                setTileLocation(tile, nWidth, nHeight)
             for kvp as KeyValuePair[of int, AutotileCenterSet] in s.centerSets:
                 cs = kvp.Value
                 length = kvp.Key
-                cs.leftFace.atlasLocation.width            = nWidth
-                cs.rightFace.atlasLocation.width           = nWidth
-                cs.doubleVerticalFace.atlasLocation.width  = nWidth
-                cs.leftFace.atlasLocation.height           = nHeight * length
-                cs.rightFace.atlasLocation.height          = nHeight * length
-                cs.doubleVerticalFace.atlasLocation.height = nHeight * length
-
-                cs.upFace.atlasLocation.width                = nWidth * length
-                cs.downFace.atlasLocation.width              = nWidth * length
-                cs.doubleHorizontalFace.atlasLocation.width  = nWidth * length
-                cs.upFace.atlasLocation.height               = nHeight
-                cs.downFace.atlasLocation.height             = nHeight
-                cs.doubleHorizontalFace.atlasLocation.height = nHeight
+                setVerticalTileLocation(cs.leftFace,           nWidth, nHeight, length)
+                setVerticalTileLocation(cs.rightFace,          nWidth, nHeight, length)
+                setVerticalTileLocation(cs.doubleVerticalFace, nWidth, nHeight, length)
+                setHorizontalTileLocation(cs.upFace,               nWidth, nHeight, length)
+                setHorizontalTileLocation(cs.downFace,             nWidth, nHeight, length)
+                setHorizontalTileLocation(cs.doubleHorizontalFace, nWidth, nHeight, length)
 
     def changeTileSize(s as AutotileAnimationSet, newSize as int):
         s.tileSize = newSize
@@ -265,18 +257,34 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             nHeight = newSize cast single / mt.height cast single
             for cornerType in s.corners:
                 for tile in cornerType:
-                    tile.atlasLocation.width = nWidth
-                    tile.atlasLocation.height = nHeight
+                    setTileLocation(tile, nWidth, nHeight)
             for kvp as KeyValuePair[of int, AutotileAnimationTileset] in s.sets:
                 cs = kvp.Value
                 length = kvp.Key
-
                 for hFace in cs.horizontalFaces:
-                    hFace.atlasLocation.width  = nWidth * length
-                    hFace.atlasLocation.height = nHeight
+                    setHorizontalTileLocation(hFace, nWidth, nHeight, length)
                 for vFace in cs.verticalFaces:
-                    vFace.atlasLocation.width    = nWidth
-                    vFace.atlasLocation.height   = nHeight * length
+                    setVerticalTileLocation(vFace, nWidth, nHeight, length)
+
+    def setTileLocation(t as Tile, w as single, h as single):
+        t.atlasLocation.width  = w
+        t.atlasLocation.height = h
+
+    def setHorizontalTileLocation(t as Tile, w as single, h as single, length as int):
+        if t.rotated and t.rotation != TileRotation._180:
+            t.atlasLocation.width  = w
+            t.atlasLocation.height = h * length
+        else:
+            t.atlasLocation.width  = w * length
+            t.atlasLocation.height = h
+
+    def setVerticalTileLocation(t as Tile, w as single, h as single, length as int):
+        if t.rotated and t.rotation != TileRotation._180:
+            t.atlasLocation.width  = w * length
+            t.atlasLocation.height = h
+        else:
+            t.atlasLocation.width  = w
+            t.atlasLocation.height = h * length
 
     def PresentAndGetNewCandidate(c as TilesetCandidate, check as callable(string) as bool, f as callable(TilesetCandidate)):
         acceptNewSet = false
@@ -357,6 +365,17 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 c.material = changedMaterial
                 PopulateAtlasPreview(c, name)
                 EditorUtility.ClearProgressBar()
+            if c isa AutotileAnimationSet:
+                animSet = c as AutotileAnimationSet
+                changedFramesPerSecond = EditorGUILayout.FloatField("Frames Per Second", animSet.framesPerSecond)
+                if changedFramesPerSecond != animSet.framesPerSecond:
+                    Undo.RegisterUndo(config, "Change $name fps")
+                    animSet.framesPerSecond = changedFramesPerSecond
+                    for go in GameObject.FindObjectsOfType(AutotileAnimation):
+                        if go.tilesetKey == name:
+                            go.dirty = true
+                            go.Refresh()
+                            EditorUtility.SetDirty(go)
 
             myRect = GUILayoutUtility.GetRect(0f, 16f)
             myRect.x += 32
@@ -722,7 +741,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                         removeCenterSet = GUI.Button(myRect, "Remove $autotileAnimSetName/$cSetKey")
                                         if removeCenterSet:
                                             Undo.RegisterUndo(config, "Remove Center Set $autotileAnimSetName/$cSetKey")
-                                            trash.Push(cAnimSet)
+                                            trash.Push(cSetKey)
                                             EditorUtility.SetDirty(config)
 
                                             autotileAnimSet.newCandidate = 1

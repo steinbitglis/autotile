@@ -117,6 +117,15 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
             Refresh(tile)
             EditorUtility.SetDirty(tile)
 
+        if GUILayout.Button("Rebuild animations thas use '$(tile.tilesetKey)'"):
+            tiles = FindObjectsOfType(AutotileAnimation)
+            tilesWithSameKey = array(AutotileAnimation, (t for t in tiles if t.tilesetKey == tile.tilesetKey))
+            Undo.RegisterUndo(tilesWithSameKey, "Rebuild animations")
+            for t in tilesWithSameKey:
+                t.dirty = true
+                Refresh(t)
+                EditorUtility.SetDirty(t)
+
         offset_grid = GUILayoutUtility.GetRect(200.0f, 125.0f)
         GUI.Label(Rect(offset_grid.x + 20.0f, offset_grid.y + 17.0f, 200.0f, 15.0f), "Offset from")
 

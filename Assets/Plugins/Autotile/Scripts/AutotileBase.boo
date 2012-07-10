@@ -281,7 +281,7 @@ class AutotileBase (MonoBehaviour):
             applied_offset = offset
             dirty = true
 
-    def ApplyTilesetKey():
+    virtual def ApplyTilesetKey():
         if applied_tileset_key != tilesetKey:
             applied_tileset_key = tilesetKey
             dirty = true

@@ -146,15 +146,15 @@ class AutotileAnimationCorners (IEnumerable of (AnimationTile)):
 
     public candidateFrames = (1, 1, 1, 1, 1)
 
-    public center = (AnimationTile(),)
-    public left = (AnimationTile(),)
-    public right = (AnimationTile(),)
-    public bottom = (AnimationTile(),)
-    public top = (AnimationTile(),)
+    public centric = (AnimationTile(),)
+    public left    = (AnimationTile(),)
+    public right   = (AnimationTile(),)
+    public bottom  = (AnimationTile(),)
+    public top     = (AnimationTile(),)
 
     self[index as int] as (AnimationTile):
         get:
-            return (center, left, right, bottom, top)[index]
+            return (centric, left, right, bottom, top)[index]
 
     #eachCornerList as IEnumerator of (AnimationTile):
     #    get:
@@ -164,7 +164,7 @@ class AutotileAnimationCorners (IEnumerable of (AnimationTile)):
     def SetCorners(index as int, value as (AnimationTile)):
         if index < 2:
             if index == 0:
-                center = value
+                centric = value
             else:
                 left = value
         else:
@@ -177,7 +177,7 @@ class AutotileAnimationCorners (IEnumerable of (AnimationTile)):
 
     private myGetEnumerator = GetEnumerator
     public def GetEnumerator() as Generic.IEnumerator of (AnimationTile):
-        yield center
+        yield centric
         yield left
         yield right
         yield bottom
@@ -188,11 +188,11 @@ class AutotileAnimationCorners (IEnumerable of (AnimationTile)):
 
     def Duplicate() as AutotileAnimationCorners:
         result = AutotileAnimationCorners()
-        result.center = (f.Duplicate() as AnimationTile for f in center)
-        result.left   = (f.Duplicate() as AnimationTile for f in left)
-        result.right  = (f.Duplicate() as AnimationTile for f in right)
-        result.bottom = (f.Duplicate() as AnimationTile for f in bottom)
-        result.top    = (f.Duplicate() as AnimationTile for f in top)
+        result.centric = (f.Duplicate() as AnimationTile for f in centric)
+        result.left    = (f.Duplicate() as AnimationTile for f in left)
+        result.right   = (f.Duplicate() as AnimationTile for f in right)
+        result.bottom  = (f.Duplicate() as AnimationTile for f in bottom)
+        result.top     = (f.Duplicate() as AnimationTile for f in top)
         return result
 
 [System.Serializable]
