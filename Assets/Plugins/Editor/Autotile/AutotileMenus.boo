@@ -116,3 +116,24 @@ static class AutotileMenus:
                 t.tilesetKey = AutotileConfig.config.sets.FirstKey()
                 t.renderer.material = AutotileConfig.config.sets.First().material
                 t.Refresh()
+
+    [MenuItem ("Component/Plugins/Autotile Animation", true)]
+    def ValidateCreateAutotileAnimationComponent() as bool:
+        return Selection.activeTransform != null
+
+    [MenuItem("Component/Plugins/Autotile Animation")]
+    def CreateAutotileAnimationComponent() as AutotileAnimation:
+        changed_objects = List of GameObject()
+        for o in Selection.gameObjects:
+            unless o.GetComponent of AutotileAnimation():
+                changed_objects.Add(o)
+        if changed_objects.Count > 1:
+            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile Animation components")
+        elif changed_objects.Count == 1:
+            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile Animation component")
+        for o in changed_objects:
+            t = o.AddComponent of AutotileAnimation()
+            if AutotileConfig.config.sets.Count:
+                t.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
+                t.renderer.material = AutotileConfig.config.animationSets.First().material
+                t.Refresh()

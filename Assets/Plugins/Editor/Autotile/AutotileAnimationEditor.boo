@@ -28,6 +28,9 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
         Tools.pivotMode = PivotMode.Pivot
 
         for t in FindObjectsOfType(AutotileAnimation):
+            if not t.tilesetKey and AutotileConfig.config.animationSets.Count:
+                t.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
+                t.Rebuild()
             try:
                 ts = AutotileConfig.config.animationSets[t.tilesetKey]
                 tsm = ts.material if ts
@@ -191,7 +194,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
         if Event.current.type == EventType.Repaint:
             for t in AutotileBase.allAutotileBases:
                 Refresh(t)
-                unless t.localRenderer.sharedMaterial:
+                if t.tilesetKey and not t.localRenderer.sharedMaterial:
                     t.localRenderer.material = AutotileConfig.config.animationSets[t.tilesetKey].material
                     EditorUtility.SetDirty(t.localRenderer)
 

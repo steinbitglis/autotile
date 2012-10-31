@@ -18,7 +18,7 @@ macro defCorner(cornerType as Boo.Lang.Compiler.Ast.ReferenceExpression):
 class AutotileAnimation (AutotileBase):
 
     def OnDrawGizmos():
-        Gizmos.DrawIcon(transform.position, "AutotileAnimation.png", true)
+        Gizmos.DrawIcon(transform.position, "Autotile/AutotileAnimation.png", true)
 
     public currentFrame = 0
 

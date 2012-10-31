@@ -47,6 +47,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         Tools.pivotMode = PivotMode.Pivot
 
         for t in FindObjectsOfType(Autotile):
+            if not t.tilesetKey and AutotileConfig.config.sets.Count:
+                t.tilesetKey = AutotileConfig.config.sets.FirstKey()
+                t.Rebuild()
             try:
                 ts = AutotileConfig.config.sets[t.tilesetKey]
                 tsm = ts.material if ts

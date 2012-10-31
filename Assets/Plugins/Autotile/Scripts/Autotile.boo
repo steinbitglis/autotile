@@ -117,7 +117,7 @@ class AutotileConnections (Generic.IEnumerable[of Autotile]):
 class Autotile (AutotileBase):
 
     def OnDrawGizmos():
-        Gizmos.DrawIcon(transform.position, "Autotile.png", true)
+        Gizmos.DrawIcon(transform.position, "Autotile/Autotile.png", true)
 
     inline_enum connectionDirection:
         i_left
