@@ -27,13 +27,34 @@ class AutotileAnimation (AutotileBase):
 
     framesPerSecond as single:
         set:
-            _frameDuration = 1f / Mathf.Max(0.01f, value)
+            unless _useFramerateOverride:
+                _frameDuration = 1f / Mathf.Max(0.01f, value)
             _framesPerSecond = value
         get:
             return _framesPerSecond
 
-    public _framesPerSecond = 50f
+    framerateOverride as single:
+        set:
+            if _useFramerateOverride:
+                _frameDuration = 1f / Mathf.Max(0.01f, value)
+            _framerateOverride = value
+        get:
+            return _framerateOverride
+
+    useFramerateOverride as bool:
+        set:
+            if value:
+                _frameDuration = 1f / Mathf.Max(0.01f, _framerateOverride)
+            else:
+                _frameDuration = 1f / Mathf.Max(0.01f, _framesPerSecond)
+            _useFramerateOverride = value
+        get:
+            return _useFramerateOverride
+
     public _frameDuration = 1f
+    public _framesPerSecond = 50f
+    public _framerateOverride = 50f
+    public _useFramerateOverride = false
 
     public localMesh as Mesh
 
@@ -146,7 +167,7 @@ class AutotileAnimation (AutotileBase):
 
         private def _build():
             built = true
-            _lcm = Math.LCM(array(int, (a.totalLength for a in _animations)))
+            _lcm = MathUtil.LCM(array(int, (a.totalLength for a in _animations)))
 
             by_animation = array(typeof(((Vector2))), _animations.Length)
             for i as int, v as UVAnimation in enumerate(_animations):
@@ -365,7 +386,7 @@ class AutotileAnimation (AutotileBase):
         else: # if tileMode == TileMode.Vertical:
             return animationSet.verticalFaces[currentFrame]
 
-    defCorner centric
+    # defCorner centric
     defCorner right
     defCorner left
     defCorner top

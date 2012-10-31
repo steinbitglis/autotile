@@ -1,6 +1,6 @@
 import UnityEngine
 
-static class Math:
+static class MathUtil:
 
     public def GCD(l as (int)) as int:
         return l[0] if l.Length == 1

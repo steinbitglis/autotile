@@ -1410,17 +1410,18 @@ class Autotile (AutotileBase):
     private workingOnConnections = false
     override def OnDestroy():
         super()
-        unless workingOnConnections:
-            try:
-                workingOnConnections = true
-                for i, remote as Autotile in enumerate(connections):
-                    if remote:
-                        remote.connections[connections.reverse[i]] = null
-                        remote.Refresh()
-            ensure:
-                workingOnConnections = false
+        unless Application.isPlaying:
+            unless workingOnConnections:
+                try:
+                    workingOnConnections = true
+                    for i, remote as Autotile in enumerate(connections):
+                        if remote:
+                            remote.connections[connections.reverse[i]] = null
+                            remote.Refresh()
+                ensure:
+                    workingOnConnections = false
 
-        DestroyImmediate( GetComponent of MeshFilter().sharedMesh, true )
+            DestroyImmediate( GetComponent of MeshFilter().sharedMesh, true )
 
     def ApplyBoxColliderMargin():
         if applied_box_collider_margin != boxColliderMargin or\

@@ -2,6 +2,7 @@
 
 #pragma strict
 import System.Threading;
+import System.OutOfMemoryException;
 
 interface TextureScaleProgressListener {
     function Progress(s : float);
@@ -46,8 +47,10 @@ class TextureScale {
         }
     }
 
+    private static var outOfMemory : boolean;
     private static var texColors : Color[];
     private static var newColors : Color[];
+    private static var texSource : Texture2D;
     private static var w : int;
     private static var ratioX : float;
     private static var ratioY : float;
@@ -57,56 +60,43 @@ class TextureScale {
     private static var listener : TextureScaleProgressListener;
     private static var mutex : Mutex;
 
-    static function Point (tex : Texture2D, newWidth : int, newHeight : int) {
-        Point (tex, newWidth, newHeight, null);
-    }
-
     static function Bilinear (tex : Texture2D, newWidth : int, newHeight : int) {
         Bilinear (tex, newWidth, newHeight, null);
     }
 
-    static function Point (tex : Texture2D, result : Texture2D, l : TextureScaleProgressListener) {
-        listener = l;
-        ThreadedScale (tex, result.width, result.height, result, false);
-    }
-
     static function Bilinear (tex : Texture2D, result : Texture2D, l : TextureScaleProgressListener) {
         listener = l;
-        ThreadedScale (tex, result.width, result.height, result, true);
+        ThreadedScale (tex, result.width, result.height, result);
     }
 
     static function Bilinear (tex : Texture2D, result : Texture2D, l : TextureScaleProgressListener, transform : TextureScaleTransform) {
         listener = l;
-        ThreadedScale (tex, result.width, result.height, result, true, transform);
-    }
-
-    static function Point (tex : Texture2D, newWidth : int, newHeight : int, l : TextureScaleProgressListener) {
-        listener = l;
-        ThreadedScale (tex, newWidth, newHeight, tex, false);
+        ThreadedScale (tex, result.width, result.height, result, transform);
     }
 
     static function Bilinear (tex : Texture2D, newWidth : int, newHeight : int, l : TextureScaleProgressListener) {
         listener = l;
-        ThreadedScale (tex, newWidth, newHeight, tex, true);
+        ThreadedScale (tex, newWidth, newHeight, tex);
     }
 
-    private static function ThreadedScale (tex : Texture2D, newWidth : int, newHeight : int, result : Texture2D, useBilinear : boolean) {
-        TextureScale.ThreadedScale(tex, newWidth, newHeight, result, useBilinear, new TextureScaleTransform(TextureScaleFlip.None, TextureScaleRotate.None));
+    private static function ThreadedScale (tex : Texture2D, newWidth : int, newHeight : int, result : Texture2D) {
+        TextureScale.ThreadedScale(tex, newWidth, newHeight, result, new TextureScaleTransform(TextureScaleFlip.None, TextureScaleRotate.None));
     }
 
-    private static function ThreadedScale (tex : Texture2D, newWidth : int, newHeight : int, result : Texture2D, useBilinear : boolean, transform : TextureScaleTransform) {
+    private static function ThreadedScale (tex : Texture2D, newWidth : int, newHeight : int, result : Texture2D, transform : TextureScaleTransform) {
         if (mutex == null) {
             mutex = new Mutex(false);
         }
-        texColors = tex.GetPixels();
-        newColors = new Color[newWidth * newHeight];
-        if (useBilinear) {
-            ratioX = 1.0 / (parseFloat(newWidth) / (tex.width-1));
-            ratioY = 1.0 / (parseFloat(newHeight) / (tex.height-1));
-        } else {
-            ratioX = parseFloat(tex.width) / newWidth;
-            ratioY = parseFloat(tex.height) / newHeight;
+        try {
+            texColors = tex.GetPixels();
+            outOfMemory = false;
+        } catch (err : System.OutOfMemoryException) {
+            texSource = tex;
+            outOfMemory = true;
         }
+        newColors = new Color[newWidth * newHeight];
+        ratioX = 1.0 / (parseFloat(newWidth) / (tex.width-1));
+        ratioY = 1.0 / (parseFloat(newHeight) / (tex.height-1));
         w = tex.width;
         w2 = newWidth;
         h2 = newHeight;
@@ -114,28 +104,20 @@ class TextureScale {
         var slice = newHeight/cores;
         finishCount = 0;
 
-        if (cores > 1) {
+        if (cores > 1 && !outOfMemory) {
             for (var i = 0; i < cores-1; i++) {
                 var threadData = new ThreadData(slice*i, slice*(i+1), false, transform.flip, transform.rotate);
-                var thread = useBilinear? new Thread(BilinearScale) : new Thread(PointScale);
+                var thread = new Thread(BilinearScale);
                 thread.Start(threadData);
             }
             threadData = new ThreadData(slice*i, newHeight, true, transform.flip, transform.rotate);
-            if (useBilinear) {
-                BilinearScale(threadData);
-            } else {
-                PointScale(threadData);
-            }
+            BilinearScale(threadData);
             while (finishCount < cores) {
                 Thread.Sleep(1);
             }
         } else {
             threadData = new ThreadData(0, newHeight, true, transform.flip, transform.rotate);
-            if (useBilinear) {
-                BilinearScale(threadData);
-            } else {
-                PointScale(threadData);
-            }
+            BilinearScale(threadData);
         }
 
         if (tex == result) {
@@ -143,6 +125,10 @@ class TextureScale {
         }
         result.SetPixels(newColors);
         result.Apply();
+
+        texColors = null;
+        newColors = null;
+        texSource = null;
     }
 
     private static function BilinearScale (threadData : ThreadData) {
@@ -183,28 +169,13 @@ class TextureScale {
                     target_y = h2 - target_y - 1;
                 }
 
-                newColors[target_y * w2 + target_x] = ColorLerpUnclamped(ColorLerpUnclamped(texColors[y1 + xFloor], texColors[y1 + xFloor+1], xLerp),
-                                                      ColorLerpUnclamped(texColors[y2 + xFloor], texColors[y2 + xFloor+1], xLerp),
-                                                      y*ratioY-yFloor);
-            }
-
-            if (threadData.report) {
-                var d : float = y - threadData.start;
-                listener.Progress(d / (threadData.end - threadData.start));
-            }
-        }
-
-        mutex.WaitOne();
-        finishCount++;
-        mutex.ReleaseMutex();
-    }
-
-    private static function PointScale (threadData : ThreadData) {
-        for (var y = threadData.start; y < threadData.end; y++) {
-            var thisY = parseInt(ratioY * y) * w;
-            var yw = y * w2;
-            for (var x = 0; x < w2; x++) {
-                newColors[yw + x] = texColors[thisY + ratioX*x];
+                if (outOfMemory) {
+                    newColors[target_y * w2 + target_x] = texSource.GetPixelBilinear((x + 0.5f) / w2, (y + 0.5f) / h2);
+                } else {
+                    newColors[target_y * w2 + target_x] = ColorLerpUnclamped(ColorLerpUnclamped(texColors[y1 + xFloor], texColors[y1 + xFloor+1], xLerp),
+                                                                             ColorLerpUnclamped(texColors[y2 + xFloor], texColors[y2 + xFloor+1], xLerp),
+                                                                             y*ratioY-yFloor);
+                }
             }
 
             if (threadData.report) {

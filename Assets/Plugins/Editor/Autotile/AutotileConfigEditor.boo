@@ -798,7 +798,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                         Undo.RegisterUndo(config, "Change number of animation frames")
                                         newFrameTiles = array(AnimationTile, animCorners.candidateFrames[i])
                                         refIndex = -1
-                                        for t in animCorners[i][:cAnimSet.candidateFrames[i]]:
+                                        for t in animCorners[i][:animCorners.candidateFrames[i]]:
                                             refIndex += 1
                                             newFrameTiles[refIndex] = t
                                         if realFrames < animCorners.candidateFrames[i]:

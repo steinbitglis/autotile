@@ -41,7 +41,7 @@ class AutotileBase (MonoBehaviour):
 
     virtual def Awake():
         localRenderer = renderer
-        allAutotileBases.Add(self)
+        allAutotileBases.Add(self) unless self in allAutotileBases
 
     virtual def OnDestroy():
         allAutotileBases.Remove(self)

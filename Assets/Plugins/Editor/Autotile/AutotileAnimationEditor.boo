@@ -117,6 +117,26 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
             Refresh(tile)
             EditorUtility.SetDirty(tile)
 
+        newUseFrameRateOverride = EditorGUILayout.Toggle("Use custom framerate", tile.useFramerateOverride)
+
+        if tile.useFramerateOverride != newUseFrameRateOverride:
+            changesToFramerate = true
+            Undo.RegisterUndo(tile, "Change 'Use custom framerate'")
+            tile.useFramerateOverride = newUseFrameRateOverride
+
+        if tile.useFramerateOverride:
+            newFramerateOverride = EditorGUILayout.IntField("Custom frames/second", tile.framerateOverride)
+
+            if tile.framerateOverride != newFramerateOverride:
+                changesToFramerate = true
+                Undo.RegisterUndo(tile, "Change 'Custom framerate'")
+                tile.framerateOverride = newFramerateOverride
+
+        if changesToFramerate:
+            tile.dirty = true
+            Refresh(tile)
+            EditorUtility.SetDirty(tile)
+
         if GUILayout.Button("Rebuild animations thas use '$(tile.tilesetKey)'"):
             tiles = FindObjectsOfType(AutotileAnimation)
             tilesWithSameKey = array(AutotileAnimation, (t for t in tiles if t.tilesetKey == tile.tilesetKey))
