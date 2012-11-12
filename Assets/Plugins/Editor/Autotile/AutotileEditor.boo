@@ -570,7 +570,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         if Event.current.type == EventType.Repaint:
             for t in AutotileBase.allAutotileBases:
                 Refresh(t)
-                unless t.localRenderer.sharedMaterial:
+                if t.tilesetKey and not t.localRenderer.sharedMaterial:
                     t.localRenderer.material = AutotileConfig.config.animationSets[t.tilesetKey].material
                     EditorUtility.SetDirty(t.localRenderer)
             DrawAutotileConnections()
