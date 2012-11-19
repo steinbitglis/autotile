@@ -208,12 +208,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         screen.transform.parent = localTransform
         f(screen)
         screen.airInfo = blackAirInfo
-        screen.tileMode = TileMode.None
-        screen.secondaryTileMode = TileMode.None
         screen.tilesetKey = tile.tilesetKey
         screen.renderer.material = AutotileConfig.config.sets[screen.tilesetKey].material
-        screen.Refresh()
-        Undo.RegisterCreatedObjectUndo(screenObject, "Create black tile")
+        screen.Rebuild()
+        Undo.RegisterCreatedObjectUndo(screenObject, "Create dark tile")
         EditorUtility.SetDirty(tile)
 
     virtual def OnInspectorGUI():
@@ -453,47 +451,47 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             tile.offsetMode = OffsetMode.Bottom
             EditorUtility.SetDirty(tile)
 
-        if is_horizontal and localTransform.localScale.x > 2.0f:
+        if hasHorizontalVolume:
             if not tile.topScreen:
-                if not air_info.up and GUILayout.Button("Insert top black tile"):
+                if not air_info.up and GUILayout.Button("Insert top dark tile"):
                     MakeScreenTileChild() do(t):
                         tile.topScreen = t
-                        t.gameObject.name = "top_black_tile"
+                        t.gameObject.name = "top_dark_tile"
                         t.transform.localPosition = tile.offset + Vector2(0.0f, 1.999f)
                         t.transform.localScale = Vector2(1.0f, 3.0f)
                         t.offsetMode = OffsetMode.Bottom
-            elif GUILayout.Button("Remove top black tile"):
+            elif GUILayout.Button("Remove top dark tile"):
                 DestroyImmediate(tile.topScreen.gameObject)
             if not tile.bottomScreen:
-                if not air_info.down and GUILayout.Button("Insert bottom black tile"):
+                if not air_info.down and GUILayout.Button("Insert bottom dark tile"):
                     MakeScreenTileChild() do(t):
                         tile.bottomScreen = t
-                        t.gameObject.name = "bottom_black_tile"
+                        t.gameObject.name = "bottom_dark_tile"
                         t.transform.localPosition = tile.offset + Vector2(0.0f, -1.999f)
                         t.transform.localScale = Vector2(1.0f, 3.0f)
                         t.offsetMode = OffsetMode.Top
-            elif GUILayout.Button("Remove bottom black tile"):
+            elif GUILayout.Button("Remove bottom dark tile"):
                 DestroyImmediate(tile.bottomScreen.gameObject)
-        elif is_vertical and localTransform.localScale.y > 2.0f:
+        elif hasVerticalVolume:
             if not tile.leftScreen:
-                if not air_info.left and GUILayout.Button("Insert left black tile"):
+                if not air_info.left and GUILayout.Button("Insert left dark tile"):
                     MakeScreenTileChild() do(t):
                         tile.leftScreen = t
-                        t.gameObject.name = "left_black_tile"
+                        t.gameObject.name = "left_dark_tile"
                         t.transform.localPosition = tile.offset + Vector2(-1.999f, 0.0f)
                         t.transform.localScale = Vector2(3.0f, 1.0f)
                         t.offsetMode = OffsetMode.Right
-            elif GUILayout.Button("Remove left black tile"):
+            elif GUILayout.Button("Remove left dark tile"):
                 DestroyImmediate(tile.leftScreen.gameObject)
             if not tile.rightScreen:
-                if not air_info.right and GUILayout.Button("Insert right black tile"):
+                if not air_info.right and GUILayout.Button("Insert right dark tile"):
                     MakeScreenTileChild() do(t):
                         tile.rightScreen = t
-                        t.gameObject.name = "right_black_tile"
+                        t.gameObject.name = "right_dark_tile"
                         t.transform.localPosition = tile.offset + Vector2(1.999f, 0.0f)
                         t.transform.localScale = Vector2(3.0f, 1.0f)
                         t.offsetMode = OffsetMode.Left
-            elif GUILayout.Button("Remove right black tile"):
+            elif GUILayout.Button("Remove right dark tile"):
                 DestroyImmediate(tile.rightScreen.gameObject)
 
         serializedObject.ApplyModifiedProperties()
@@ -566,7 +564,27 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         else:
             tile.transform.localScale.y = 1.0f
 
+    private hasHorizontalVolume as bool # Only updated when not repainting, because they might change the gui layout
+    private hasVerticalVolume as bool
+
     def OnSceneGUI():
+
+        unless Event.current.type == EventType.Repaint:
+            formedLeftCorner   = tile.DrawsLeftCorner()   and tile.useLeftCorner
+            formedRightCorner  = tile.DrawsRightCorner()  and tile.useRightCorner
+            formedBottomCorner = tile.DrawsBottomCorner() and tile.useBottomCorner
+            formedTopCorner    = tile.DrawsTopCorner()    and tile.useTopCorner
+
+            hasHorizontalVolume = tile.tileMode == TileMode.Horizontal and\
+                                  ( localTransform.localScale.x > 2.0f or\
+                                    localTransform.localScale.x > 1.0f and (not formedLeftCorner or not formedRightCorner) or\
+                                    not (formedLeftCorner or formedRightCorner) )
+
+            hasVerticalVolume = tile.tileMode == TileMode.Vertical and\
+                                  ( localTransform.localScale.y > 2.0f or\
+                                    localTransform.localScale.y > 1.0f and (not formedBottomCorner or not formedTopCorner) or\
+                                    not (formedBottomCorner or formedTopCorner) )
+
         if Event.current.type == EventType.Repaint:
             for t in AutotileBase.allAutotileBases:
                 Refresh(t)

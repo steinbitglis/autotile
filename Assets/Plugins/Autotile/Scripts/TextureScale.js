@@ -180,7 +180,9 @@ class TextureScale {
 
             if (threadData.report) {
                 var d : float = y - threadData.start;
-                listener.Progress(d / (threadData.end - threadData.start));
+                if (listener){
+                    listener.Progress(d / (threadData.end - threadData.start));
+                }
             }
         }
 

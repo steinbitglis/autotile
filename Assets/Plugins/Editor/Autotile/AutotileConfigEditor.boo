@@ -100,14 +100,14 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         EditorUtility.DisplayProgressBar("Creating atlas previews", "", (imageBeingResized + s) / imagesBeingResized)
 
     def PopulateAtlasPreview(s as AutotileBaseSet, name as string) as bool:
-        PopulateAtlasPreview(s, name, true)
+        return PopulateAtlasPreview(s, name, true)
 
-    private preview_failure = false
+    private preview_failures = List of string()
     def PopulateAtlasPreview(s as AutotileBaseSet, name as string, initMetaAndTexture as bool) as bool:
-        if not preview_failure:
+        unless name in preview_failures:
 
             unless s.material and s.material.mainTexture:
-                preview_failure = true
+                preview_failures.Add(name)
                 Debug.LogError("$name did not have a readable texture to preview")
                 return false
 
@@ -139,10 +139,12 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 newMeta.tilesHigh = mt.height / s.tileSize
 
             except e as UnityException:
-                preview_failure = true
+                preview_failures.Add(name)
                 Debug.LogError("$name did not have a readable texture to preview")
+                return false
 
-        return not preview_failure
+            return true
+        return false
 
      def drawTileGUIContent(s as AutotileBaseSet, t as Tile, n as string, prefix as string, c as GUIContent):
         t.show = EditorGUILayout.Foldout(t.show, c)
@@ -463,7 +465,10 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
                     PresentAndGetSettings(autotileSet, autotileSetName, {s as int | changeTileSize(autotileSet, s)})
 
-                    autotileSet.showCenterSets = EditorGUILayout.Foldout(f(autotileSet.showCenterSets), "Center Sets")
+                    locked = autotileSetName in preview_failures
+                    GUI.enabled = not locked
+                    autotileSet.showCenterSets = EditorGUILayout.Foldout(f(autotileSet.showCenterSets), "Center Sets") and not locked
+                    GUI.enabled = true
                     if autotileSet.showCenterSets:
                         trash = []
 
@@ -565,7 +570,9 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         for t in autotileSet.corners:
                             t.show = f(t.show)
 
-                    autotileSet.showCorners = EditorGUILayout.Foldout(f(autotileSet.showCorners), "Corners")
+                    GUI.enabled = not locked
+                    autotileSet.showCorners = EditorGUILayout.Foldout(f(autotileSet.showCorners), "Corners") and not locked
+                    GUI.enabled = true
                     if autotileSet.showCorners:
                         EditorGUI.indentLevel += 1
                         all_corners autotileSet, autotileSet.corners, drawTileGUI
@@ -654,7 +661,11 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
                     PresentAndGetSettings(autotileAnimSet, autotileAnimSetName, {s as int | changeTileSize(autotileAnimSet, s)})
 
-                    autotileAnimSet.showSets = EditorGUILayout.Foldout(f(autotileAnimSet.showSets), "Center Sets")
+                    locked = autotileAnimSetName in preview_failures
+                    GUI.enabled = not locked
+                    autotileAnimSet.showSets = EditorGUILayout.Foldout(f(autotileAnimSet.showSets), "Center Sets") and not locked
+                    GUI.enabled = true
+
                     if autotileAnimSet.showSets:
                         trash = []
 
@@ -764,27 +775,31 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         for t in trash:
                             autotileAnimSet.sets.Remove(t)
 
-                    for csEntry in autotileAnimSet.sets:
-                        if csEntry.Value:
-                            cAnimSet = csEntry.Value
-                            cAnimSet.show = f(cAnimSet.show)
-                            if closeAllTiles or openAllTiles:
+                    if closeAllTiles or openAllTiles:
+
+                        for csEntry in autotileAnimSet.sets:
+                            if csEntry.Value:
+                                cAnimSet = csEntry.Value
+                                cAnimSet.show = f(cAnimSet.show)
+                                cAnimSet.showingFace[0] = f(cAnimSet.showingFace[0]) # 0: horizontal
+                                cAnimSet.showingFace[1] = f(cAnimSet.showingFace[1]) # 1: vertical
                                 for faceType as (AnimationTile) in cAnimSet:
                                     for face in faceType:
                                         face.show = f(face.show)
 
-                    if closeAllTiles or openAllTiles:
                         for cornerType in animCorners:
                             for t in cornerType:
                                 t.show = f(t.show)
 
-                    autotileAnimSet.showCorners = EditorGUILayout.Foldout(f(autotileAnimSet.showCorners), "Corners")
+                    GUI.enabled = not locked
+                    autotileAnimSet.showCorners = EditorGUILayout.Foldout(f(autotileAnimSet.showCorners), "Corners") and not locked
+                    GUI.enabled = true
                     if autotileAnimSet.showCorners:
                         EditorGUI.indentLevel += 1
                         for cornerType as (AnimationTile), cornerGUI as GUIContent, i as int in\
                         zip(animCorners,                   cardinalCorners,         range(5)):
 
-                            animCorners.showingCorner[i] = EditorGUILayout.Foldout(animCorners.showingCorner[i], cornerGUI)
+                            animCorners.showingCorner[i] = EditorGUILayout.Foldout(f(animCorners.showingCorner[i]), cornerGUI)
                             if animCorners.showingCorner[i]:
                                 EditorGUI.indentLevel += 1
 

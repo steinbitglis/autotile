@@ -116,8 +116,9 @@ class AutotileConnections (Generic.IEnumerable[of Autotile]):
 [RequireComponent(MeshRenderer), RequireComponent(MeshFilter), ExecuteInEditMode]
 class Autotile (AutotileBase):
 
-    def OnDrawGizmos():
-        Gizmos.DrawIcon(transform.position, "Autotile/Autotile.png", true)
+    # Deactivated because it's too much of an impact on unknown projects.
+    #def OnDrawGizmos():
+    #    Gizmos.DrawIcon(transform.position, "Autotile/Autotile.png", true)
 
     inline_enum connectionDirection:
         i_left
@@ -1307,6 +1308,9 @@ class Autotile (AutotileBase):
         if connections.left and connections.right and\
            not (connections.down or connections.up):
 
+            tileMode = secondaryTileMode = TileMode.Horizontal
+            UseHorizontalConnections()
+
             if_00_01_10_11 _airInfo.down, _airInfo.up:
                 ApplyHorizontalTile(DescendingNoneFaces(tilesetKey))
                 ApplyHorizontalTile(DescendingUpFaces(tilesetKey))
@@ -1315,6 +1319,9 @@ class Autotile (AutotileBase):
 
         elif connections.down and connections.up and\
              not (connections.left or connections.right):
+
+            tileMode = secondaryTileMode = TileMode.Vertical
+            UseVerticalConnections()
 
             if_00_01_10_11 _airInfo.left, _airInfo.right:
                 ApplyVerticalTile(DescendingNoneFaces(tilesetKey))
@@ -1380,6 +1387,8 @@ class Autotile (AutotileBase):
                     applied_non_serialized_scale = transform.localScale
                 elif squeezeMode == SqueezeMode.Clip:
                     ApplyClipCentric()
+                    applied_scale = transform.localScale
+                    applied_non_serialized_scale = transform.localScale
 
     def ApplyAirInfo():
         unless applied_air_info.Equals(_airInfo):
