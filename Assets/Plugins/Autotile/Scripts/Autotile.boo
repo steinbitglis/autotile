@@ -116,9 +116,32 @@ class AutotileConnections (Generic.IEnumerable[of Autotile]):
 [RequireComponent(MeshRenderer), RequireComponent(MeshFilter), ExecuteInEditMode]
 class Autotile (AutotileBase):
 
-    # Deactivated because it's too much of an impact on unknown projects.
-    #def OnDrawGizmos():
-    #    Gizmos.DrawIcon(transform.position, "Autotile/Autotile.png", true)
+    def OnDrawGizmos():
+        if tileMode == TileMode.Horizontal:
+            if _offsetMode == OffsetMode.Right:
+                Gizmos.DrawIcon(transform.position, "Autotile/h_l.png", true)
+            elif _offsetMode == OffsetMode.Left:
+                Gizmos.DrawIcon(transform.position, "Autotile/h_r.png", true)
+            else:
+                Gizmos.DrawIcon(transform.position, "Autotile/h.png", true)
+        elif tileMode == TileMode.Vertical:
+            if _offsetMode == OffsetMode.Top:
+                Gizmos.DrawIcon(transform.position, "Autotile/v_d.png", true)
+            elif _offsetMode == OffsetMode.Bottom:
+                Gizmos.DrawIcon(transform.position, "Autotile/v_u.png", true)
+            else:
+                Gizmos.DrawIcon(transform.position, "Autotile/v.png", true)
+        else:
+            if _offsetMode == OffsetMode.Right:
+                Gizmos.DrawIcon(transform.position, "Autotile/c_l.png", true)
+            elif _offsetMode == OffsetMode.Left:
+                Gizmos.DrawIcon(transform.position, "Autotile/c_r.png", true)
+            elif _offsetMode == OffsetMode.Top:
+                Gizmos.DrawIcon(transform.position, "Autotile/c_d.png", true)
+            elif _offsetMode == OffsetMode.Bottom:
+                Gizmos.DrawIcon(transform.position, "Autotile/c_u.png", true)
+            else:
+                Gizmos.DrawIcon(transform.position, "Autotile/c.png", true)
 
     inline_enum connectionDirection:
         i_left
