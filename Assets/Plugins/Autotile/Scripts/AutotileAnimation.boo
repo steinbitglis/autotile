@@ -231,7 +231,7 @@ class AutotileAnimation (AutotileBase):
     protected static def TileUVs(t as (AnimationTile), fraction as single, direction as TileDirection) as UVAnimation:
         result = UVAnimation(array(UVFrame, t.Length))
         for i as int, s as AnimationTile in enumerate(t):
-            result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s))
+            result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s, fraction, direction))
         return result
 
 
@@ -313,7 +313,7 @@ class AutotileAnimation (AutotileBase):
                 else:
                     nextSplit = currentSplit + splitWidth * tileWidth
                     vertices += TileSlice(currentSplit, nextSplit, direction)
-                    anim = TileUVs(tile, fractionOfTile, direction)
+                    anim = TileUVs(tile)
                     uvs += anim.frames[0].uvs
                     allFrames.Add(anim)
 
