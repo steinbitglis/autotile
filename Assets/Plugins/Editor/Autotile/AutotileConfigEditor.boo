@@ -119,7 +119,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                     if s.preview:
                         newMeta.preview = s.preview
                     else:
-                        aspect = mt.width / mt.height
+                        aspect = mt.width cast single / mt.height cast single
                         nextTexture = Texture2D(
                             Mathf.Min(mt.width,  256.0f * aspect),
                             Mathf.Min(mt.height, 256.0f),
@@ -155,7 +155,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
                 mt = s.material.mainTexture as Texture2D
 
-                aspect = mt.width / mt.height
+                aspect = mt.width cast single / mt.height cast single
                 indent = 8 + EditorGUI.indentLevel * 8
                 width = Screen.width - indent - 16
                 height = Mathf.Min(width / aspect, 256.0f)
@@ -365,6 +365,16 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             if changedMaterial != c.material:
                 Undo.RegisterUndo(config, "Change $name material")
                 c.material = changedMaterial
+                c.preview = null
+
+                path = AssetDatabase.GetAssetPath(c.material.mainTexture)
+                textureImporter = AssetImporter.GetAtPath(path) as TextureImporter
+                unless textureImporter.isReadable:
+                    textureImporter.mipmapEnabled = false
+                    textureImporter.isReadable = true
+                    textureImporter.filterMode = FilterMode.Point
+                AssetDatabase.ImportAsset(path)
+
                 PopulateAtlasPreview(c, name)
                 EditorUtility.ClearProgressBar()
             if c isa AutotileAnimationSet:
