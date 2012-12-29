@@ -6,7 +6,7 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: Stone
+  m_Name: Grass
   m_Shader: {fileID: 30, guid: 0000000000000000e000000000000000, type: 0}
   m_SavedProperties:
     serializedVersion: 2
@@ -15,14 +15,10 @@ Material:
         first:
           name: _MainTex
         second:
-          m_Texture: {fileID: 2800000, guid: 5c5f6b445dec171439a8e86ddb4148d8, type: 1}
+          m_Texture: {fileID: 2800000, guid: ef306a071a7c3b5428204daddc54512c, type: 1}
           m_Scale: {x: 1, y: 1}
           m_Offset: {x: 0, y: 0}
-    m_Floats:
-      data:
-        first:
-          name: _Cutoff
-        second: .5
+    m_Floats: {}
     m_Colors:
       data:
         first:
