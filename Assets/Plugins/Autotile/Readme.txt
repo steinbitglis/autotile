@@ -125,6 +125,25 @@ specify the relative duration of frames.
 
 
 
+--------------------------
+|     Example scene      |
+--------------------------
+
+Example scene:
+    'Assets/Plugins/Autotile/Example Scene.unity'
+
+The example scene shows how you can use gameobjects to rotate and scale
+Autotiles freely. Tiles that have different parent objects are not able to
+connect to eachother.
+
+There is also one Autotile animation in the scene. It looks like it is one
+sided, but that is just the look of the texture. Autotile animations can not be
+configured to be one sided, but you could always fake it.
+
+Please visit our website if you need more examples:
+    http://rain-games.com/autotile
+
+
 
 --------------------------
 |         Support        |
