@@ -334,7 +334,10 @@ class Autotile (AutotileBase):
     def Start():
         for index as int, neighbour as Autotile in enumerate(connections):
             if neighbour:
-                unless neighbour.connections[connections.reverse[index]] == self:
+                # neighbour might be in state of being instantiated or
+                # not (a previously created asset)
+                unless neighbour.connections and neighbour.connections[connections.reverse[index]] == self:
+                    dirty = true
                     connections[index] = null
                     connections.reverse[index] = -1
 

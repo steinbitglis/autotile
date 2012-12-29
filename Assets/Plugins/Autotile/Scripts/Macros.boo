@@ -24,7 +24,7 @@ macro inline_enum (enumName as ReferenceExpression):
             static public final $name = $i
         |]
 
-macro all_corners(tileset as Boo.Lang.Compiler.Ast.ReferenceExpression, corners as Boo.Lang.Compiler.Ast.ReferenceExpression, f as Boo.Lang.Compiler.Ast.ReferenceExpression):
+macro all_corners(tileset as ReferenceExpression, corners as ReferenceExpression, f as ReferenceExpression):
     yield [|
         $f($tileset, $corners.aaaa, "AAAA")
         $f($tileset, $corners.aaad, "AAAD")
