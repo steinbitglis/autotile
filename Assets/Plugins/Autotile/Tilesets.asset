@@ -3574,11 +3574,11 @@ MonoBehaviour:
         aaad:
           atlasLocation:
             serializedVersion: 2
-            x: .375
-            y: 0
+            x: .75
+            y: .5
             width: .125
             height: .125
-          flipped: 1
+          flipped: 0
           direction: 0
           rotated: 0
           rotation: 0
@@ -3596,22 +3596,22 @@ MonoBehaviour:
         aadd:
           atlasLocation:
             serializedVersion: 2
-            x: .125
-            y: .75
+            x: .625
+            y: .125
             width: .125
             height: .125
-          flipped: 1
+          flipped: 0
           direction: 0
           rotated: 0
           rotation: 0
         aarg:
           atlasLocation:
             serializedVersion: 2
-            x: 0
-            y: .875
+            x: .625
+            y: .25
             width: .125
             height: .125
-          flipped: 1
+          flipped: 0
           direction: 0
           rotated: 0
           rotation: 0

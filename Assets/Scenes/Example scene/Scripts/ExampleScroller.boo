@@ -6,4 +6,4 @@ class ExampleScroller (MonoBehaviour):
     def Update ():
         if Input.GetKeyDown(KeyCode.Space):
             animation.Play("Animation $num")
-            num = (num + 1) % 3
+            num = (num + 1) % 5
