@@ -127,6 +127,7 @@ PlayerSettings:
   ps3BootCheckMaxSaveGameSizeKB: 128
   ps3TrophyCommSig: 
   ps3SaveGameSlots: 1
+  ps3EDATKeyFilePath: 
   ps3TrialMode: 0
   flashStrippingLevel: 2
   firstStreamedLevelWithResources: 0
