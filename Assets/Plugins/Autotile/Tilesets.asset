@@ -591,8 +591,8 @@ MonoBehaviour:
         lbld:
           atlasLocation:
             serializedVersion: 2
-            x: .75
-            y: .5
+            x: .875
+            y: .25
             width: .125
             height: .125
           flipped: 0
@@ -2592,8 +2592,8 @@ MonoBehaviour:
         lbld:
           atlasLocation:
             serializedVersion: 2
-            x: .75
-            y: .5
+            x: .875
+            y: .25
             width: .125
             height: .125
           flipped: 0
@@ -3926,8 +3926,8 @@ MonoBehaviour:
         lbld:
           atlasLocation:
             serializedVersion: 2
-            x: .75
-            y: .5
+            x: .875
+            y: .25
             width: .125
             height: .125
           flipped: 0
@@ -4089,7 +4089,7 @@ MonoBehaviour:
           rotated: 0
           rotation: 0
   animationSets:
-    show: 0
+    show: 1
     keys:
     - Grass
     values:
