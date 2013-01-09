@@ -12242,7 +12242,7 @@ GameObject:
   - 102: {fileID: 877748239}
   - 23: {fileID: 877748238}
   m_Layer: 0
-  m_Name: Text bouble 04
+  m_Name: Speech-bubble 04
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -17119,7 +17119,7 @@ GameObject:
   - 102: {fileID: 1253444583}
   - 23: {fileID: 1253444582}
   m_Layer: 0
-  m_Name: Text bouble 01
+  m_Name: Speech-bubble 01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -20205,7 +20205,7 @@ GameObject:
   - 102: {fileID: 1447083065}
   - 23: {fileID: 1447083064}
   m_Layer: 0
-  m_Name: Text bouble 02
+  m_Name: Speech-bubble 02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -24917,7 +24917,7 @@ GameObject:
   - 102: {fileID: 1862361092}
   - 23: {fileID: 1862361091}
   m_Layer: 0
-  m_Name: Text bouble 03
+  m_Name: Speech-bubble 03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
