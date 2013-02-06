@@ -252,6 +252,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         if serializedObject.isEditingMultipleObjects:
             return
 
+        if PrefabUtility.GetPrefabType(tile) == PrefabType.Prefab:
+            return
+
         EditorGUILayout.PropertyField(squeezeModeProp, GUIContent("Squeeze Mode"))
         GUI.enabled = false
         EditorGUILayout.PropertyField(tileModeProp, GUIContent("Tile Mode"))
