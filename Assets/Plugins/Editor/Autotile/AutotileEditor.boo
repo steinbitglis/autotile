@@ -193,7 +193,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         return not preview_failure
 
     def Refresh(t as AutotileBase):
-        t.Refresh()
+        t.Refresh() unless PrefabUtility.GetPrefabType(t) == PrefabType.Prefab
         if t.unsaved:
             t.unsaved = false
             EditorUtility.SetDirty(t)
