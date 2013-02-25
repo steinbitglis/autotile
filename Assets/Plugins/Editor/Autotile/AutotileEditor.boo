@@ -193,7 +193,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         return not preview_failure
 
     def Refresh(t as AutotileBase):
-        t.Refresh() unless PrefabUtility.GetPrefabType(t) == PrefabType.Prefab
+        isPrefabtype = PrefabUtility.GetPrefabType(t) == PrefabType.Prefab
+        Debug.Log("this autotile is prefab type, will not refresh", t) if isPrefabtype
+        t.Refresh() unless isPrefabtype
         if t.unsaved:
             t.unsaved = false
             EditorUtility.SetDirty(t)
@@ -625,22 +627,23 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     if one_tile.tileMode in (TileMode.Horizontal, TileMode.Vertical):
                         one_tile.secondaryTileMode = one_tile.tileMode
                     changed = false
+                    delta = Mathf.Sign(Event.current.delta.y)
                     if one_tile.secondaryTileMode == TileMode.Horizontal:
-                        one_tile_transform.localScale.x -= Event.current.delta.y / 3.0f
+                        one_tile_transform.localScale.x = Mathf.Round(one_tile_transform.localScale.x - delta)
                         one_tile_transform.localScale = one_tile.SuggestScales()
                         changed = true
                     elif one_tile.secondaryTileMode == TileMode.Vertical:
-                        one_tile_transform.localScale.y -= Event.current.delta.y / 3.0f
+                        one_tile_transform.localScale.y = Mathf.Round(one_tile_transform.localScale.y - delta)
                         one_tile_transform.localScale = one_tile.SuggestScales()
                         changed = true
                     elif one_tile.secondaryTileMode == TileMode.Centric:
                         if one_tile.offsetMode in (OffsetMode.Bottom, OffsetMode.Top):
-                            one_tile_transform.localScale.y -= Event.current.delta.y / 3.0f
+                            one_tile_transform.localScale.y = Mathf.Round(one_tile_transform.localScale.y - delta)
                             one_tile.Refresh()
                             one_tile_transform.localScale = one_tile.SuggestScales()
                             changed = true
                         elif one_tile.offsetMode in (OffsetMode.Left, OffsetMode.Right):
-                            one_tile_transform.localScale.x -= Event.current.delta.y / 3.0f
+                            one_tile_transform.localScale.x = Mathf.Round(one_tile_transform.localScale.x - delta)
                             one_tile.Refresh()
                             one_tile_transform.localScale = one_tile.SuggestScales()
                             changed = true
