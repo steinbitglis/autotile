@@ -14,6 +14,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
     class TilesetCandidate:
         public name = ""
         public material as Material
+        public uvMarginMode as UVMarginMode
         public tileSize = 128
         public show = false
 
@@ -295,6 +296,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             EditorGUI.indentLevel += 1
             c.name = EditorGUILayout.TextField("Name", c.name)
             c.tileSize = EditorGUILayout.IntField("Tile Size", c.tileSize)
+            c.uvMarginMode = EditorGUILayout.EnumPopup("UV Margin Mode", c.uvMarginMode)
             c.material = EditorGUILayout.ObjectField("Material", c.material, Material, false)
             if c isa TilesetAnimationCandidate:
                 ac = c as TilesetAnimationCandidate
@@ -314,13 +316,14 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             textureImporter = AssetImporter.GetAtPath(path) as TextureImporter
             textureImporter.mipmapEnabled = false
             textureImporter.isReadable = true
-            textureImporter.filterMode = FilterMode.Point
+            textureImporter.filterMode = FilterMode.Point if c.uvMarginMode == UVMarginMode.NoMargin
             AssetDatabase.ImportAsset(path)
 
             f(c)
 
             c.name = ""
             c.tileSize = 128
+            c.uvMarginMode = UVMarginMode.NoMargin
             c.material = null
             if c isa TilesetAnimationCandidate:
                 ac = c as TilesetAnimationCandidate
@@ -356,11 +359,18 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         c.showSettings = EditorGUILayout.Foldout(c.showSettings, "Settings")
         if c.showSettings:
             EditorGUI.indentLevel += 1
+
             changedTileSize = EditorGUILayout.IntField("Tile Size", c.tileSize)
             if changedTileSize != c.tileSize:
                 Undo.RegisterUndo(config, "Change $name tile size")
                 onTileSizeChange(changedTileSize)
                 PopulateAtlasPreview(c, name, false)
+
+            changedUVMode = EditorGUILayout.EnumPopup("UV margin mode", c.uvMarginMode)
+            if changedUVMode != c.uvMarginMode cast System.Enum:
+                Undo.RegisterUndo(config, "Change $name uv margin mode")
+                c.uvMarginMode = changedUVMode
+
             changedMaterial = EditorGUILayout.ObjectField("Material", c.material, Material, false)
             if changedMaterial != c.material:
                 Undo.RegisterUndo(config, "Change $name material")
@@ -377,6 +387,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
                 PopulateAtlasPreview(c, name)
                 EditorUtility.ClearProgressBar()
+
             if c isa AutotileAnimationSet:
                 animSet = c as AutotileAnimationSet
                 changedFramesPerSecond = EditorGUILayout.FloatField("Frames Per Second", animSet.framesPerSecond)
@@ -425,6 +436,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             PresentAndGetNewCandidate(candidate, {s as string | return not config.sets.ContainsKey(s)}) do(c):
                 newSet = AutotileSet()
                 newSet.material = c.material
+                newSet.uvMarginMode = c.uvMarginMode
                 newSet.tileSize = c.tileSize
 
                 # Add a '1' center set

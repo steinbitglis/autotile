@@ -192,10 +192,10 @@ class AutotileBase (MonoBehaviour):
                 pos.z = 0.0f
                 transform.localPosition = pos
 
-    protected static def TileUVs(t as Tile) as (Vector2):
-        return TileUVs(t, 1.0f, TileDirection.Horizontal)
+    protected static def TileUVs(t as Tile, margin as Vector2) as (Vector2):
+        return TileUVs(t, 1.0f, TileDirection.Horizontal, margin)
 
-    protected static def TileUVs(t as Tile, fraction as single, direction as TileDirection) as (Vector2):
+    protected static def TileUVs(t as Tile, fraction as single, direction as TileDirection, margin as Vector2) as (Vector2):
         orthogonal_source =  t.rotated and\
             (t.rotation == TileRotation.CW or\
              t.rotation == TileRotation.CCW)
@@ -213,26 +213,26 @@ class AutotileBase (MonoBehaviour):
 
         if reversed_fractions:
             if (direction == TileDirection.Horizontal) != orthogonal_source:
-                xMin = fraction * t.atlasLocation.xMin + (1.0f - fraction) * t.atlasLocation.xMax
-                xMax = t.atlasLocation.xMax
-                yMin = t.atlasLocation.yMin
-                yMax = t.atlasLocation.yMax
+                xMin = fraction * t.atlasLocation.xMin + (1.0f - fraction) * t.atlasLocation.xMax + margin.x
+                xMax = t.atlasLocation.xMax - margin.x
+                yMin = t.atlasLocation.yMin + margin.y
+                yMax = t.atlasLocation.yMax - margin.y
             else:
-                xMin = t.atlasLocation.xMin
-                xMax = t.atlasLocation.xMax
-                yMin = fraction * t.atlasLocation.yMin + (1.0f - fraction) * t.atlasLocation.yMax
-                yMax = t.atlasLocation.yMax
+                xMin = t.atlasLocation.xMin + margin.x
+                xMax = t.atlasLocation.xMax - margin.x
+                yMin = fraction * t.atlasLocation.yMin + (1.0f - fraction) * t.atlasLocation.yMax + margin.y
+                yMax = t.atlasLocation.yMax - margin.y
         else:
             if (direction == TileDirection.Horizontal) != orthogonal_source:
-                xMin = t.atlasLocation.xMin
-                xMax = (1.0f - fraction) * xMin + fraction * t.atlasLocation.xMax
-                yMin = t.atlasLocation.yMin
-                yMax = t.atlasLocation.yMax
+                xMin = t.atlasLocation.xMin + margin.x
+                xMax = (1.0f - fraction) * xMin + fraction * t.atlasLocation.xMax - margin.x
+                yMin = t.atlasLocation.yMin + margin.y
+                yMax = t.atlasLocation.yMax - margin.y
             else:
-                xMin = t.atlasLocation.xMin
-                xMax = t.atlasLocation.xMax
-                yMin = t.atlasLocation.yMin
-                yMax = (1.0f - fraction) * yMin + fraction * t.atlasLocation.yMax
+                xMin = t.atlasLocation.xMin + margin.x
+                xMax = t.atlasLocation.xMax - margin.x
+                yMin = t.atlasLocation.yMin + margin.y
+                yMax = (1.0f - fraction) * yMin + fraction * t.atlasLocation.yMax - margin.y
         if t.flipped:
             if t.direction == TileFlipDirection.Horizontal:
                 result = (

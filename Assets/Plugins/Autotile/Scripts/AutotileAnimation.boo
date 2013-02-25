@@ -10,7 +10,7 @@ macro defCorner(cornerType as Boo.Lang.Compiler.Ast.ReferenceExpression):
             sources = animSet.corners.$cornerType
             result = UVAnimation(array(UVFrame, sources.Length))
             for i as int, s as AnimationTile in enumerate(sources):
-                result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s))
+                result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s, uvMargin))
             return result
     |]
 
@@ -81,6 +81,18 @@ class AutotileAnimation (AutotileBase):
     public _useFramerateOverride = false
 
     public localMesh as Mesh
+
+    uvMargin as Vector2:
+        get:
+            config = AutotileConfig.config.animationSets[tilesetKey]
+            if config.uvMarginMode == UVMarginMode.HalfPixel:
+                mt = config.material.mainTexture
+                return Vector2(.5f/mt.width, .5f/mt.height)
+            else:
+                return Vector2.zero
+
+    [SerializeField]
+    protected applied_margin_mode = UVMarginMode.NoMargin
 
     def tryLoadFramesPerSecond():
         try:
@@ -225,15 +237,14 @@ class AutotileAnimation (AutotileBase):
 
     ## -- UV Building End -- ##
 
-    protected static def TileUVs(t as (AnimationTile)) as UVAnimation:
-        return TileUVs(t, 1.0f, TileDirection.Horizontal)
+    protected static def TileUVs(t as (AnimationTile), margin as Vector2) as UVAnimation:
+        return TileUVs(t, 1.0f, TileDirection.Horizontal, margin)
 
-    protected static def TileUVs(t as (AnimationTile), fraction as single, direction as TileDirection) as UVAnimation:
+    protected static def TileUVs(t as (AnimationTile), fraction as single, direction as TileDirection, margin as Vector2) as UVAnimation:
         result = UVAnimation(array(UVFrame, t.Length))
         for i as int, s as AnimationTile in enumerate(t):
-            result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s, fraction, direction))
+            result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s, fraction, direction, margin))
         return result
-
 
     def ApplyLongTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]], direction as TileDirection):
         if direction == TileDirection.Horizontal:
@@ -307,13 +318,13 @@ class AutotileAnimation (AutotileBase):
                     else:
                         fractionOfTile = 1.0f
                     vertices += TileSlice(currentSplit, lastSplit, direction)
-                    anim = TileUVs(tile, fractionOfTile, direction)
+                    anim = TileUVs(tile, fractionOfTile, direction, uvMargin)
                     uvs += anim.frames[0].uvs
                     allFrames.Add(anim)
                 else:
                     nextSplit = currentSplit + splitWidth * tileWidth
                     vertices += TileSlice(currentSplit, nextSplit, direction)
-                    anim = TileUVs(tile)
+                    anim = TileUVs(tile, uvMargin)
                     uvs += anim.frames[0].uvs
                     allFrames.Add(anim)
 
@@ -371,7 +382,7 @@ class AutotileAnimation (AutotileBase):
             unsavedMesh = true
 
     def ApplyTile(tile as (AnimationTile)):
-        anim = TileUVs(tile)
+        anim = TileUVs(tile, uvMargin)
         cache.animations = (anim,)
         uvs = anim.frames[0].uvs
         mf = GetComponent of MeshFilter()
@@ -387,7 +398,6 @@ class AutotileAnimation (AutotileBase):
     def CanScaleToCentric():
         return false unless CornersNeeded()
         return true
-
 
     def getCenterLength() as int:
         if tileMode == TileMode.Horizontal:
@@ -534,3 +544,13 @@ class AutotileAnimation (AutotileBase):
     override def ApplyTilesetKey():
         super()
         tryLoadFramesPerSecond()
+
+    def ApplyMarginMode():
+        real_margine_mode = AutotileConfig.config.animationSets[tilesetKey].uvMarginMode
+        if applied_margin_mode != real_margine_mode:
+            applied_margin_mode = real_margine_mode
+            dirty = true
+
+    override def Refresh():
+        ApplyMarginMode()
+        super()

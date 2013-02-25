@@ -313,6 +313,15 @@ class Autotile (AutotileBase):
         get:
             return AirInfoState(_airInfo)
 
+    uvMargin as Vector2:
+        get:
+            config = AutotileConfig.config.sets[tilesetKey]
+            if config.uvMarginMode == UVMarginMode.HalfPixel:
+                mt = config.material.mainTexture
+                return Vector2(.5f/mt.width, .5f/mt.height)
+            else:
+                return Vector2.zero
+
     [SerializeField]
     private _airInfo = AirInfo(true, true, true, true, true, true, true, true)
 
@@ -328,6 +337,8 @@ class Autotile (AutotileBase):
     private applied_use_box_collider_margins_bottom = true
     [SerializeField]
     private applied_use_box_collider_margins_top = true
+    [SerializeField]
+    protected applied_margin_mode = UVMarginMode.NoMargin
 
     private favoredConnections = Generic.List of int()
 
@@ -895,7 +906,7 @@ class Autotile (AutotileBase):
             mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
-            mf.sharedMesh.uv = AutotileBase.TileUVs(left) + AutotileBase.TileUVs(right)
+            mf.sharedMesh.uv = AutotileBase.TileUVs(left, uvMargin) + AutotileBase.TileUVs(right, uvMargin)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -962,7 +973,7 @@ class Autotile (AutotileBase):
         if draw_first_corner:
             firstSplit = -0.5f + cornerSize
             vertices = TileSlice(-0.5f, firstSplit, direction)
-            uvs = AutotileBase.TileUVs(left)
+            uvs = AutotileBase.TileUVs(left, uvMargin)
             tilesSpent = 1
         else:
             firstSplit = -0.5f
@@ -999,18 +1010,18 @@ class Autotile (AutotileBase):
                     else:
                         fractionOfTile = 1.0f
                     vertices += TileSlice(currentSplit, lastSplit, direction)
-                    uvs += AutotileBase.TileUVs(tile, fractionOfTile, direction)
+                    uvs += AutotileBase.TileUVs(tile, fractionOfTile, direction, uvMargin)
                 else:
                     nextSplit = currentSplit + splitWidth * tileWidth
                     vertices += TileSlice(currentSplit, nextSplit, direction)
-                    uvs += AutotileBase.TileUVs(tile)
+                    uvs += AutotileBase.TileUVs(tile, uvMargin)
 
                 tilesSpent += 1
                 currentSplit = nextSplit
 
         if draw_last_corner:
             vertices += TileSlice(lastSplit, 0.5f, direction)
-            uvs += AutotileBase.TileUVs(right)
+            uvs += AutotileBase.TileUVs(right, uvMargin)
             tilesSpent += 1
 
         mf = GetComponent of MeshFilter()
@@ -1034,7 +1045,7 @@ class Autotile (AutotileBase):
             mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleVerticalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
-            mf.sharedMesh.uv = AutotileBase.TileUVs(bottom) + AutotileBase.TileUVs(top)
+            mf.sharedMesh.uv = AutotileBase.TileUVs(bottom, uvMargin) + AutotileBase.TileUVs(top, uvMargin)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -1044,7 +1055,7 @@ class Autotile (AutotileBase):
         ApplyLongTile(centerTiles, TileDirection.Vertical)
 
     def ApplyTile(tile as Tile):
-        uvs = AutotileBase.TileUVs(tile)
+        uvs = AutotileBase.TileUVs(tile, uvMargin)
         mf = GetComponent of MeshFilter()
         if mf.sharedMesh:
             mf.sharedMesh.Clear()
@@ -1471,8 +1482,15 @@ class Autotile (AutotileBase):
             applied_use_box_collider_margins_top    = useBoxColliderMarginTop
             dirty = true
 
+    def ApplyMarginMode():
+        real_margine_mode = AutotileConfig.config.sets[tilesetKey].uvMarginMode
+        if applied_margin_mode != real_margine_mode:
+            applied_margin_mode = real_margine_mode
+            dirty = true
+
     override def Refresh():
         boxCollider = GetComponent of BoxCollider() unless boxCollider
         ApplyAirInfo()
         ApplyBoxColliderMargin()
+        ApplyMarginMode()
         super()

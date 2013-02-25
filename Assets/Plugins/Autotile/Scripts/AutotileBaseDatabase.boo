@@ -1,3 +1,7 @@
+enum UVMarginMode:
+    NoMargin
+    HalfPixel
+
 [System.Serializable]
 class AutotileBaseSet:
     [System.NonSerialized]
@@ -16,6 +20,7 @@ class AutotileBaseSet:
     [System.NonSerialized]
     public showSettings = false
     public tileSize = 128
+    public uvMarginMode as UVMarginMode
     public material as Material
 
     [System.NonSerialized]
