@@ -66,31 +66,23 @@ static class MathOfPlanes:
             return MathOfPlanes.StandardSquare
 
     def RectIntersectsRect(remote as (Vector2)) as bool:
-        minLimitX = StandardSquare[0].x
-        minLimitY = StandardSquare[0].y
-        maxLimitX = StandardSquare[2].x
-        maxLimitY = StandardSquare[2].y
-        outside = (true, true, true, true)
+        outsideTop = outsideLeft = outsideRight = outsideBottom = true
 
         for v in remote:
-            outside[Top] = outside[Top] and v.y > maxLimitY
-            outside[Left] = outside[Left] and v.x < minLimitX
-            outside[Right] = outside[Right] and v.x > maxLimitX
-            outside[Bottom] = outside[Bottom] and v.y < minLimitY
+            outsideTop = outsideTop and v.y > StandardSquare[2].y
+            outsideLeft = outsideLeft and v.x < StandardSquare[0].x
+            outsideRight = outsideRight and v.x > StandardSquare[2].x
+            outsideBottom = outsideBottom and v.y < StandardSquare[0].y
 
-        return true not in outside
+        return not (outsideTop or outsideLeft or outsideRight or outsideBottom)
 
     def RectIntersectsRect(local as (Vector2), remote as (Vector2)) as bool:
-        minLimitX = local[0].x
-        minLimitY = local[0].y
-        maxLimitX = local[2].x
-        maxLimitY= local[2].y
-        outside = (true, true, true, true)
+        outsideTop = outsideLeft = outsideRight = outsideBottom = true
 
         for v in remote:
-            outside[Top] = outside[Top] and v.y > maxLimitY
-            outside[Left] = outside[Left] and v.x < minLimitX
-            outside[Right] = outside[Right] and v.x > maxLimitX
-            outside[Bottom] = outside[Bottom] and v.y < minLimitY
+            outsideTop = outsideTop and v.y > local[2].y
+            outsideLeft = outsideLeft and v.x < local[0].x
+            outsideRight = outsideRight and v.x > local[2].x
+            outsideBottom = outsideBottom and v.y < local[0].y
 
-        return true not in outside
+        return not (outsideTop or outsideLeft or outsideRight or outsideBottom)
