@@ -21,6 +21,7 @@ MonoBehaviour:
     - GrassBasic
     values:
     - tileSize: 128
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: b917d072653477d4ebd1c0234677cbd0, type: 2}
       centerSets:
         keys: 010000000200000004000000
@@ -754,6 +755,7 @@ MonoBehaviour:
           rotated: 0
           rotation: 0
     - tileSize: 512
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: f58fb62bcf0f2bd4ebac226b3828d04e, type: 2}
       centerSets:
         keys: 01000000
@@ -1355,6 +1357,7 @@ MonoBehaviour:
           rotated: 0
           rotation: 0
     - tileSize: 256
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: a309a9ea582b3f3469ccfdcbd1dd0721, type: 2}
       centerSets:
         keys: 0100000002000000
@@ -2022,6 +2025,7 @@ MonoBehaviour:
           rotated: 0
           rotation: 0
     - tileSize: 128
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: 4796d77302e17fc40bc3b3dd91b84157, type: 2}
       centerSets:
         keys: 010000000200000004000000
@@ -2755,6 +2759,7 @@ MonoBehaviour:
           rotated: 0
           rotation: 0
     - tileSize: 256
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: 528b963a1e9f24e4bb30607f8e0437c3, type: 2}
       centerSets:
         keys: 01000000
@@ -3356,6 +3361,7 @@ MonoBehaviour:
           rotated: 0
           rotation: 0
     - tileSize: 128
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: 68ce23b63cc3e1546bd0079686345ee6, type: 2}
       centerSets:
         keys: 010000000200000004000000
@@ -4094,6 +4100,7 @@ MonoBehaviour:
     - Grass
     values:
     - tileSize: 256
+      uvMarginMode: 0
       material: {fileID: 2100000, guid: 9b265c9390d94074ead90d85ffca6c38, type: 2}
       framesPerSecond: 5
       sets:
