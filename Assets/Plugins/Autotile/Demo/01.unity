@@ -521,6 +521,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -639,6 +640,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -758,6 +760,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -1007,6 +1010,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -1187,6 +1191,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -1636,6 +1641,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -1835,6 +1841,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -2178,6 +2185,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -2416,6 +2424,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -2534,6 +2543,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -2652,6 +2662,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -2890,6 +2901,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -3127,6 +3139,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -3258,6 +3271,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -3602,6 +3616,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -3733,6 +3748,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -3957,6 +3973,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -4181,6 +4198,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -4313,6 +4331,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -4537,6 +4556,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -5159,6 +5179,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -5654,6 +5675,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -5772,6 +5794,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -6214,6 +6237,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -6587,6 +6611,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -6705,6 +6730,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -6942,6 +6968,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -7126,6 +7153,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -7363,6 +7391,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0
@@ -7495,6 +7524,7 @@ MonoBehaviour:
   applied_use_box_collider_margins_right: 1
   applied_use_box_collider_margins_bottom: 1
   applied_use_box_collider_margins_top: 1
+  applied_margin_mode: 0
   conforming: 0
   airPropagationStarter: 0
   conformingToAir: 0

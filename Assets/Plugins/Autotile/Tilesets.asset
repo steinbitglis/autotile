@@ -4100,7 +4100,7 @@ MonoBehaviour:
     - Grass
     values:
     - tileSize: 256
-      uvMarginMode: 0
+      uvMarginMode: 1
       material: {fileID: 2100000, guid: 9b265c9390d94074ead90d85ffca6c38, type: 2}
       framesPerSecond: 5
       sets:
