@@ -546,6 +546,7 @@ class AutotileAnimation (AutotileBase):
         tryLoadFramesPerSecond()
 
     def ApplyMarginMode():
+        return unless AutotileConfig.config.animationSets.ContainsKey(tilesetKey)
         real_margine_mode = AutotileConfig.config.animationSets[tilesetKey].uvMarginMode
         if applied_margin_mode != real_margine_mode:
             applied_margin_mode = real_margine_mode

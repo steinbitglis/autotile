@@ -1483,9 +1483,10 @@ class Autotile (AutotileBase):
             dirty = true
 
     def ApplyMarginMode():
-        real_margine_mode = AutotileConfig.config.sets[tilesetKey].uvMarginMode
-        if applied_margin_mode != real_margine_mode:
-            applied_margin_mode = real_margine_mode
+        return unless AutotileConfig.config.sets.ContainsKey(tilesetKey)
+        real_margin_mode = AutotileConfig.config.sets[tilesetKey].uvMarginMode
+        if applied_margin_mode != real_margin_mode:
+            applied_margin_mode = real_margin_mode
             dirty = true
 
     override def Refresh():

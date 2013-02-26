@@ -251,23 +251,21 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             EditorGUILayout.LabelField("Full Autotile editor can not display.")
             return
 
-        if serializedObject.isEditingMultipleObjects:
-            return
-
         if PrefabUtility.GetPrefabType(tile) == PrefabType.Prefab:
             return
 
-        EditorGUILayout.PropertyField(squeezeModeProp, GUIContent("Squeeze Mode"))
-        GUI.enabled = false
-        EditorGUILayout.PropertyField(tileModeProp, GUIContent("Tile Mode"))
-        GUI.enabled = true
-        newUseCorner = EditorGUILayout.EnumMaskField(GUIContent("Corners"), tile.useCorner)
+        unless serializedObject.isEditingMultipleObjects:
+            EditorGUILayout.PropertyField(squeezeModeProp, GUIContent("Squeeze Mode"))
+            GUI.enabled = false
+            EditorGUILayout.PropertyField(tileModeProp, GUIContent("Tile Mode"))
+            GUI.enabled = true
+            newUseCorner = EditorGUILayout.EnumMaskField(GUIContent("Corners"), tile.useCorner)
 
-        if tile.useCorner cast System.Enum != newUseCorner:
-            Undo.RegisterUndo(tile, "Change tile corner")
-            tile.useCorner = newUseCorner
-            Refresh(tile)
-            EditorUtility.SetDirty(tile)
+            if tile.useCorner cast System.Enum != newUseCorner:
+                Undo.RegisterUndo(tile, "Change tile corner")
+                tile.useCorner = newUseCorner
+                Refresh(tile)
+                EditorUtility.SetDirty(tile)
 
         if tile.boxCollider:
             EditorGUILayout.PropertyField(boxColliderMarginProp, GUIContent("Box Collider Margin"))
@@ -278,6 +276,12 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 EditorGUILayout.PropertyField(useBoxColliderMarginBottomProp, GUIContent("Bottom"))
                 EditorGUILayout.PropertyField(useBoxColliderMarginTopProp, GUIContent("Top"))
                 EditorGUI.indentLevel -= 1
+
+        if serializedObject.isEditingMultipleObjects:
+            serializedObject.ApplyModifiedProperties()
+            for t as Autotile in serializedObject.targetObjects:
+                t.Refresh()
+            return
 
         if GUILayout.Button("Reset local connections"):
             tile.ResetAllConnections()
