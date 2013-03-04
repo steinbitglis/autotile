@@ -204,7 +204,6 @@ class AutotileAnimation (AutotileBase):
         private def _build():
             built = true
             _lcm = MathUtil.LCM(array(int, (a.totalLength for a in _animations)))
-
             by_animation = array(typeof(((Vector2))), _animations.Length)
             for i as int, v as UVAnimation in enumerate(_animations):
                 by_animation[i] = v.unrolledUVs(_lcm)
@@ -227,7 +226,9 @@ class AutotileAnimation (AutotileBase):
         private _animations as (UVAnimation)
 
         def next_uvs() as (Vector2):
-            _build() unless built
+            unless built:
+                _build()
+                currentFrame %= _lcm
             result = uvs[currentFrame]
             currentFrame = (currentFrame + 1) % _lcm
             return result
