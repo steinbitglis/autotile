@@ -1,4 +1,5 @@
 import UnityEngine
+import System.Collections.Generic
 
 static class MathUtil:
 
@@ -65,10 +66,10 @@ static class MathOfPlanes:
         else:
             return MathOfPlanes.StandardSquare
 
-    def RectIntersectsRect(remote as (Vector2)) as bool:
+    def RectIntersectsRect(remote as IEnumerator[of Vector2]) as bool:
         outsideTop = outsideLeft = outsideRight = outsideBottom = true
 
-        for v in remote:
+        for v as Vector2 in remote:
             outsideTop = outsideTop and v.y > StandardSquare[2].y
             outsideLeft = outsideLeft and v.x < StandardSquare[0].x
             outsideRight = outsideRight and v.x > StandardSquare[2].x
@@ -76,10 +77,10 @@ static class MathOfPlanes:
 
         return not (outsideTop or outsideLeft or outsideRight or outsideBottom)
 
-    def RectIntersectsRect(local as (Vector2), remote as (Vector2)) as bool:
+    def RectIntersectsRect(local as (Vector2), remote as IEnumerator[of Vector2]) as bool:
         outsideTop = outsideLeft = outsideRight = outsideBottom = true
 
-        for v in remote:
+        for v as Vector2 in remote:
             outsideTop = outsideTop and v.y > local[2].y
             outsideLeft = outsideLeft and v.x < local[0].x
             outsideRight = outsideRight and v.x > local[2].x
