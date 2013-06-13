@@ -1495,3 +1495,29 @@ class Autotile (AutotileBase):
         ApplyBoxColliderMargin()
         ApplyMarginMode()
         super()
+
+    static def WrappingLimitsXY(tiles as Generic.IEnumerable[of Autotile], ref result as (single)):
+        # (left, right, bottom, top)
+        min_left = single.MaxValue
+        max_right = single.MinValue
+        min_bottom = single.MaxValue
+        max_top = single.MinValue
+
+        for tile in tiles:
+            width_margin = tile.boxColliderMargin / tile.transform.localScale.x
+            height_margin = tile.boxColliderMargin / tile.transform.localScale.y
+
+            left_end   = tile.transform.TransformPoint(tile.offset + Vector2(-.5f + (width_margin if tile.useBoxColliderMarginLeft  else 0f), 0f)).x
+            right_end  = tile.transform.TransformPoint(tile.offset + Vector2( .5f - (width_margin if tile.useBoxColliderMarginRight else 0f), 0f)).x
+            bottom_end = tile.transform.TransformPoint(tile.offset + Vector2(0f,  -.5f + (height_margin if tile.useBoxColliderMarginBottom else 0f))).y
+            top_end    = tile.transform.TransformPoint(tile.offset + Vector2(0f,   .5f - (height_margin if tile.useBoxColliderMarginTop    else 0f))).y
+
+            min_left   = left_end   if left_end   < min_left
+            max_right  = right_end  if right_end  > max_right
+            min_bottom = bottom_end if bottom_end < min_bottom
+            max_top    = top_end    if top_end    > max_top
+
+        result[0] = min_left
+        result[1] = max_right
+        result[2] = min_bottom
+        result[3] = max_top
