@@ -602,11 +602,6 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     EditorUtility.SetDirty(t.localRenderer)
             DrawAutotileConnections()
 
-        elif Event.current.type == EventType.KeyDown:
-            if Event.current.keyCode == KeyCode.LeftControl or\
-               Event.current.keyCode == KeyCode.RightControl:
-                StartSnapshot()
-
         elif Event.current.type == EventType.KeyUp:
             if Event.current.keyCode == KeyCode.LeftControl or\
                Event.current.keyCode == KeyCode.RightControl:
@@ -676,7 +671,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 t_vertices3 = array(Vector3, ( to_local(from_other(v)) for v in other_collision_quad ))
                 t_vertices2 = System.Array.ConvertAll[of Vector3, Vector2](t_vertices3, {v as Vector3| return v})
 
-                intersects.Add(other_tile) if MathOfPlanes.RectIntersectsRect(local_collision_quad, t_vertices2)
+                intersects.Add(other_tile) if MathOfPlanes.RectIntersectsRect(local_collision_quad, (t_vertices2 as Generic.IEnumerable of Vector2).GetEnumerator())
 
             affected = Generic.List of Autotile(intersects)
             for n in tile.connections:
