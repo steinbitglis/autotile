@@ -44,8 +44,6 @@ class AutotileAnimation (AutotileBase):
             else:
                 Gizmos.DrawIcon(transform.position, "Autotile/c.png", true)
 
-    public currentFrame = 0
-
     [System.NonSerialized]
     private lastTime = 0f
 
@@ -93,6 +91,8 @@ class AutotileAnimation (AutotileBase):
 
     [SerializeField]
     protected applied_margin_mode = UVMarginMode.NoMargin
+    [SerializeField]
+    protected applied_position = Vector3.zero
 
     def tryLoadFramesPerSecond():
         try:
@@ -130,8 +130,20 @@ class AutotileAnimation (AutotileBase):
         super()
         if Time.time > lastTime + _frameDuration:
             lastTime = Time.time
-            localMesh.uv = cache.next_uvs()
-            currentFrame = (currentFrame + 1) % cache.lcm
+            if cache.dirty:
+                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations.", self)
+            else:
+                localMesh.uv = cache.next_uvs(self)
+
+    def RewriteUVsHack():
+        # Hack! Sometimes uv's needs to be reset when the rotation is changed. Otherwise it displays backwards.
+        # Suppressing warnings is supported in Boo 0.9.5
+        # pragma:
+        #     suppressWarnings BCW0020
+        # localMesh.uv = localMesh.uv
+
+        tmp = localMesh.uv
+        localMesh.uv = tmp
 
     def Reset():
         localMesh = Mesh()
@@ -168,6 +180,15 @@ class AutotileAnimation (AutotileBase):
         # \---/
         public frames as (UVFrame)
 
+        override def Equals(other as object) as bool:
+            return false unless other isa UVAnimation
+            return false unless frames.Length == (other as UVAnimation).frames.Length
+            for l as UVFrame, r as UVFrame in zip(frames, (other as UVAnimation).frames):
+                return false unless l.duration == r.duration and l.uvs.Length == r.uvs.Length
+                for uvl as Vector2, uvr as Vector2 in zip(l.uvs, r.uvs):
+                    return false unless uvl == uvr
+            return true
+
         totalLength as int:
             get:
                 sum = 0
@@ -177,6 +198,15 @@ class AutotileAnimation (AutotileBase):
 
         def constructor(f as (UVFrame)):
             frames = f
+
+        def singleFrameUVs(index as int) as (Vector2):
+            request_i = index % totalLength
+            f_i = -1
+            for f in frames:
+                f_i += f.duration
+                if f_i >= request_i:
+                    return f.uvs
+            Debug.Log("Error: could not find animation frame")
 
         def unrolledUVs(dist as int) as ((Vector2)):
             uvs = List[of (Vector2)]()
@@ -201,12 +231,14 @@ class AutotileAnimation (AutotileBase):
         private built as bool
         private uvs as ((Vector2))
 
+        public bypass_cache as bool
+
         private def _build():
             built = true
-            _lcm = MathUtil.LCM(array(int, (a.totalLength for a in _animations)))
-            by_animation = array(typeof(((Vector2))), _animations.Length)
-            for i as int, v as UVAnimation in enumerate(_animations):
-                by_animation[i] = v.unrolledUVs(_lcm)
+            _lcm = MathUtil.LCM(array(int, (a.totalLength for a in _animationSources)))
+            by_animation = array(typeof(((Vector2))), _animationSourceIndexes.Length)
+            for i as int, ai as int in enumerate(_animationSourceIndexes):
+                by_animation[i] = _animationSources[ai].unrolledUVs(_lcm)
 
             all_animations = List[of (Vector2)]()
             for i in range(_lcm):
@@ -219,22 +251,69 @@ class AutotileAnimation (AutotileBase):
 
         animations as (UVAnimation):
             set:
-                _animations = value
+                _usingIndexedAnimations = true
+                sourcesList = List of UVAnimation()
+                indexList = List of int()
+                nextIndex = 0
+                for a in value:
+                    i = sourcesList.IndexOf(a)
+                    if i == -1:
+                        sourcesList.Add(a)
+                        indexList.Add(nextIndex)
+                        nextIndex += 1
+                    else:
+                        indexList.Add(i)
+
+                _animationSources       = array(UVAnimation, sourcesList)
+                _animationSourceIndexes = array(int,         indexList)
+
                 built = false
 
-        [SerializeField]
-        private _animations as (UVAnimation)
+        dirty as bool:
+            get:
+                return not _usingIndexedAnimations
 
-        def next_uvs() as (Vector2):
-            unless built:
-                _build()
-                currentFrame %= _lcm
-            result = uvs[currentFrame]
-            currentFrame = (currentFrame + 1) % _lcm
-            return result
+        [SerializeField]
+        private _animationSources as (UVAnimation)
+        [SerializeField]
+        private _animationSourceIndexes as (int)
+        [SerializeField]
+        private _usingIndexedAnimations as bool
+
+        def next_uvs(aa as AutotileAnimation) as (Vector2):
+            if bypass_cache and not built:
+                result_cache = List of Vector2()
+                for ai as int in _animationSourceIndexes:
+                    result_cache.Extend(_animationSources[ai].singleFrameUVs(currentFrame))
+                _lcm = MathUtil.LCM(array(int, (a.totalLength for a in _animationSources)))
+                currentFrame = (currentFrame + 1) % _lcm
+                return array(typeof(Vector2), result_cache)
+            else:
+                unless built: # Rebuild if not playing
+                    _build()
+                    currentFrame %= _lcm
+                result = uvs[currentFrame]
+                currentFrame = (currentFrame + 1) % _lcm
+                return result
+
+        def current_uvs(aa as AutotileAnimation) as (Vector2):
+            if bypass_cache and not built:
+                result_cache = List of Vector2()
+                for ai as int in _animationSourceIndexes:
+                    result_cache.Extend(_animationSources[ai].singleFrameUVs(currentFrame))
+                return array(typeof(Vector2), result_cache)
+            else:
+                unless built: # Rebuild if not playing
+                    _build()
+                    currentFrame %= _lcm
+                return uvs[currentFrame]
 
     [SerializeField]
     private cache = UVAnimationCache()
+
+    bypass_cache as bool:
+        set:
+            cache.bypass_cache = value
 
     ## -- UV Building End -- ##
 
@@ -343,7 +422,7 @@ class AutotileAnimation (AutotileBase):
         mf.sharedMesh.Clear()
         mf.sharedMesh.vertices = vertices
         mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
-        mf.sharedMesh.uv = uvs
+        mf.sharedMesh.uv = cache.current_uvs(self)
         mf.sharedMesh.RecalculateNormals()
         mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
@@ -360,7 +439,7 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
-            mf.sharedMesh.uv = left.frames[0].uvs + right.frames[0].uvs
+            mf.sharedMesh.uv = cache.current_uvs(self)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -377,7 +456,7 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleVerticalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
-            mf.sharedMesh.uv = bottom.frames[0].uvs + top.frames[0].uvs
+            mf.sharedMesh.uv = cache.current_uvs(self)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -385,13 +464,12 @@ class AutotileAnimation (AutotileBase):
     def ApplyTile(tile as (AnimationTile)):
         anim = TileUVs(tile, uvMargin)
         cache.animations = (anim,)
-        uvs = anim.frames[0].uvs
         mf = GetComponent of MeshFilter()
         if mf.sharedMesh:
             mf.sharedMesh.Clear()
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.singleVertices)
             mf.sharedMesh.triangles = AutotileBase.singleTriangles
-            mf.sharedMesh.uv = uvs
+            mf.sharedMesh.uv = cache.current_uvs(self)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -417,9 +495,9 @@ class AutotileAnimation (AutotileBase):
         db = tileSet.sets
         animationSet = db[db.smallestKey]
         if tileMode == TileMode.Horizontal:
-            return animationSet.horizontalFaces[currentFrame]
+            return animationSet.horizontalFaces[0]
         else: # if tileMode == TileMode.Vertical:
-            return animationSet.verticalFaces[currentFrame]
+            return animationSet.verticalFaces[0]
 
     # defCorner centric
     defCorner right
@@ -552,6 +630,10 @@ class AutotileAnimation (AutotileBase):
         if applied_margin_mode != real_margine_mode:
             applied_margin_mode = real_margine_mode
             dirty = true
+
+    def ApplyIndexedCache():
+        dirty |= cache.dirty
+        ApplyScale()
 
     override def Refresh():
         ApplyMarginMode()

@@ -188,11 +188,11 @@ class AutotileAnimationCorners (IEnumerable of (AnimationTile)):
 
     def Duplicate() as AutotileAnimationCorners:
         result = AutotileAnimationCorners()
-        result.centric = (f.Duplicate() as AnimationTile for f in centric)
-        result.left    = (f.Duplicate() as AnimationTile for f in left)
-        result.right   = (f.Duplicate() as AnimationTile for f in right)
-        result.bottom  = (f.Duplicate() as AnimationTile for f in bottom)
-        result.top     = (f.Duplicate() as AnimationTile for f in top)
+        result.centric = array(AnimationTile, (f.Duplicate() for f in centric))
+        result.left    = array(AnimationTile, (f.Duplicate() for f in left))
+        result.right   = array(AnimationTile, (f.Duplicate() for f in right))
+        result.bottom  = array(AnimationTile, (f.Duplicate() for f in bottom))
+        result.top     = array(AnimationTile, (f.Duplicate() for f in top))
         return result
 
 [System.Serializable]
@@ -212,13 +212,16 @@ class AutotileAnimationSet (AutotileBaseSet):
 
     def Duplicate() as AutotileBaseSet:
         result = AutotileAnimationSet()
+        result.framesPerSecond = framesPerSecond
         result.material = material
+        result.uvMarginMode = uvMarginMode
         result.tileSize = tileSize
         for csEntry in sets:
             cSet = csEntry.Value
             cSetKey = csEntry.Key
             dup = cSet.Duplicate()
             result.sets[cSetKey] = dup
+        result.corners = corners.Duplicate()
         return result
 
 class AutotileAnimationSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileAnimationSet]]):

@@ -6,14 +6,18 @@ static class AutotileMenus:
 
     [MenuItem("Assets/Create/Autotile Config")]
     def CreateConfig() as AutotileConfig:
-        tc = AssetDatabase.LoadAssetAtPath("Assets/Plugins/Autotile/Tilesets.asset", AutotileConfig)
+        tc = AssetDatabase.LoadAssetAtPath(AutotileConfig.tilesetsPath, AutotileConfig)
         unless tc:
-            unless Directory.Exists("Assets/Plugins"):
-                AssetDatabase.CreateFolder("Assets", "Plugins")
-            unless Directory.Exists("Assets/Plugins/Autotile"):
-                AssetDatabase.CreateFolder("Assets/Plugins", "Autotile")
-            tc = ScriptableObject.CreateInstance(AutotileConfig)
-            AssetDatabase.CreateAsset(tc, "Assets/Plugins/Autotile/Tilesets.asset")
+            path_components = @/\//.Split(AutotileConfig.tilesetsPath)
+            if path_components[0] == "Assets":
+                if path_components.Length > 2:
+                    for i in range(1, path_components.Length - 1):
+                        unless Directory.Exists(join(path_components[:i+1], "/")):
+                            AssetDatabase.CreateFolder(join(path_components[:i], "/"), path_components[i])
+                tc = ScriptableObject.CreateInstance(AutotileConfig)
+                AssetDatabase.CreateAsset(tc, AutotileConfig.tilesetsPath)
+            else:
+                Debug.LogWarning("Could not create config because AutotileConfig.tilesetsPath is improperly set")
         return tc
 
     def Refresh(t as Autotile):

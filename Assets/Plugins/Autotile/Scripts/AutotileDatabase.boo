@@ -338,6 +338,7 @@ class AutotileSet (AutotileBaseSet):
     def Duplicate() as AutotileBaseSet:
         result = AutotileSet()
         result.material = material
+        result.uvMarginMode = uvMarginMode
         result.tileSize = tileSize
         for csEntry in centerSets:
             cSet = csEntry.Value
