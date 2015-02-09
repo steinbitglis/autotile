@@ -2,7 +2,7 @@
 #      Autotile      #
 ######################
 
-version: 1.0
+version: 1.1
 
 Homepage:
     http://rain-games.com/autotile
