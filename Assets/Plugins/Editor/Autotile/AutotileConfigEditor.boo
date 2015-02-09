@@ -170,7 +170,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         x = Mathf.Min(1.0f - t.atlasLocation.width, Mathf.Floor(x * nextMeta.tilesWide) / nextMeta.tilesWide)
                         y = Mathf.Min(1.0f - t.atlasLocation.height, Mathf.Floor(y * nextMeta.tilesHigh) / nextMeta.tilesHigh)
 
-                        Undo.RegisterUndo(config, "Set Tile Location in $(prefix)$n")
+                        Undo.RecordObject(config, "Set Tile Location in $(prefix)$n")
                         t.atlasLocation.x = x
                         t.atlasLocation.y = y
 
@@ -187,25 +187,25 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                     at = t as AnimationTile
                     newFrames = EditorGUILayout.IntField("Frames", at.frames)
                     if at.frames != newFrames:
-                        Undo.RegisterUndo(config, "Set duration in $(prefix)$n")
+                        Undo.RecordObject(config, "Set duration in $(prefix)$n")
                         at.frames = newFrames
 
                 newAtlasLocation = EditorGUILayout.RectField("Tile Location", t.atlasLocation)
                 if t.atlasLocation != newAtlasLocation:
-                    Undo.RegisterUndo(config, "Set Tile Location in $(prefix)$n")
+                    Undo.RecordObject(config, "Set Tile Location in $(prefix)$n")
                     t.atlasLocation = newAtlasLocation
                 newFlipped = EditorGUILayout.Toggle("Source Flipped", t.flipped)
                 if t.flipped != newFlipped:
-                    Undo.RegisterUndo(config, "Set Flipped in $(prefix)$n")
+                    Undo.RecordObject(config, "Set Flipped in $(prefix)$n")
                     t.flipped = newFlipped
                 if t.flipped:
                     newDirection = EditorGUILayout.EnumPopup("Direction", t.direction)
                     if t.direction cast System.Enum != newDirection:
-                        Undo.RegisterUndo(config, "Set Direction in $(prefix)$n")
+                        Undo.RecordObject(config, "Set Direction in $(prefix)$n")
                         t.direction = newDirection
                 newRotated = EditorGUILayout.Toggle("Source Rotated", t.rotated)
                 if t.rotated != newRotated:
-                    Undo.RegisterUndo(config, "Set Rotated in $(prefix)$n")
+                    Undo.RecordObject(config, "Set Rotated in $(prefix)$n")
                     unless t.rotation == TileRotation._180:
                         buf = t.atlasLocation.width
                         t.atlasLocation.width = t.atlasLocation.height / aspect
@@ -214,7 +214,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 if t.rotated:
                     newRotation = EditorGUILayout.EnumPopup("Rotation", t.rotation)
                     if t.rotation cast System.Enum != newRotation:
-                        Undo.RegisterUndo(config, "Set Rotation in $(prefix)$n")
+                        Undo.RecordObject(config, "Set Rotation in $(prefix)$n")
                         if newRotation == TileRotation._180 cast System.Enum or\
                            t.rotation == TileRotation._180:
                             buf = t.atlasLocation.width
@@ -308,7 +308,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             EditorGUI.indentLevel -= 1
 
         if acceptNewSet and c.name and c.material:
-            Undo.RegisterUndo(config, "Add Autotile Set $(c.name)")
+            Undo.RecordObject(config, "Add Autotile Set $(c.name)")
 
             path = AssetDatabase.GetAssetPath(c.material.mainTexture)
             textureImporter = AssetImporter.GetAtPath(path) as TextureImporter
@@ -342,7 +342,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             myRect.x += 32
             myRect.width -= 32
             if GUI.Button(myRect, "Duplicate $name as $(c.duplicateCandidate)"):
-                Undo.RegisterUndo(config, "Duplicate $name")
+                Undo.RecordObject(config, "Duplicate $name")
                 newSet = c.Duplicate()
                 f(newSet, c.duplicateCandidate)
 
@@ -358,12 +358,12 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             EditorGUI.indentLevel += 1
             changedTileSize = EditorGUILayout.IntField("Tile Size", c.tileSize)
             if changedTileSize != c.tileSize:
-                Undo.RegisterUndo(config, "Change $name tile size")
+                Undo.RecordObject(config, "Change $name tile size")
                 onTileSizeChange(changedTileSize)
                 PopulateAtlasPreview(c, name, false)
             changedMaterial = EditorGUILayout.ObjectField("Material", c.material, Material, false)
             if changedMaterial != c.material:
-                Undo.RegisterUndo(config, "Change $name material")
+                Undo.RecordObject(config, "Change $name material")
                 c.material = changedMaterial
                 c.preview = null
 
@@ -381,7 +381,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 animSet = c as AutotileAnimationSet
                 changedFramesPerSecond = EditorGUILayout.FloatField("Frames Per Second", animSet.framesPerSecond)
                 if changedFramesPerSecond != animSet.framesPerSecond:
-                    Undo.RegisterUndo(config, "Change $name fps")
+                    Undo.RecordObject(config, "Change $name fps")
                     animSet.framesPerSecond = changedFramesPerSecond
                     for go in GameObject.FindObjectsOfType(AutotileAnimation):
                         if go.tilesetKey == name:
@@ -497,7 +497,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                             EditorGUI.indentLevel -= 1
 
                         if autotileSet.newCandidate > 0 and acceptNew and meta:
-                            Undo.RegisterUndo(config, "Add New Center Set $(autotileSet.newCandidate)")
+                            Undo.RecordObject(config, "Add New Center Set $(autotileSet.newCandidate)")
 
                             newCenterSet = AutotileCenterSet()
                             v_props = (newCenterSet.leftFace, newCenterSet.rightFace, newCenterSet.doubleVerticalFace)
@@ -543,7 +543,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                         myRect.width -= 48
                                         removeCenterSet = GUI.Button(myRect, "Remove $autotileSetName/$cSetKey")
                                         if removeCenterSet:
-                                            Undo.RegisterUndo(config, "Remove Center Set $autotileSetName/$cSetKey")
+                                            Undo.RecordObject(config, "Remove Center Set $autotileSetName/$cSetKey")
                                             trash.Push(cSetKey)
                                             EditorUtility.SetDirty(config)
 
@@ -558,7 +558,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                 EditorGUILayout.BeginHorizontal()
                                 EditorGUILayout.LabelField("$(csEntry.Key) (missing)")
                                 if GUILayout.Button("Remove $(csEntry.Key)", GUILayout.Width(160)):
-                                    Undo.RegisterUndo(config, "Remove Center Set $(csEntry.Key)")
+                                    Undo.RecordObject(config, "Remove Center Set $(csEntry.Key)")
                                     trash.Push(csEntry.Key)
                                 EditorGUILayout.EndHorizontal()
 
@@ -594,7 +594,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         myRect.x += 32
                         myRect.width -= 32
                         if GUI.Button(myRect, "Remove $autotileSetName"):
-                            Undo.RegisterUndo(config, "Remove Set $autotileSetName")
+                            Undo.RecordObject(config, "Remove Set $autotileSetName")
                             tileSetTrash.Push(autotileSetName)
                             EditorUtility.SetDirty(config)
 
@@ -694,7 +694,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                             EditorGUI.indentLevel -= 1
 
                         if autotileAnimSet.newCandidate > 0 and acceptNew and meta:
-                            Undo.RegisterUndo(config, "Add New Animation Set $(autotileAnimSet.newCandidate)")
+                            Undo.RecordObject(config, "Add New Animation Set $(autotileAnimSet.newCandidate)")
 
                             newAnimationTileset = AutotileAnimationTileset()
                             tilesWide = meta.tilesWide
@@ -739,7 +739,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                                 myRect.x += 48
                                                 myRect.width -= 48
                                                 if GUI.Button(myRect, "Apply"):
-                                                    Undo.RegisterUndo(config, "Change number of animation frames")
+                                                    Undo.RecordObject(config, "Change number of animation frames")
                                                     newFrameTiles = array(AnimationTile, cAnimSet.candidateFrames[i])
                                                     refIndex = -1
                                                     for t in cAnimSet[i][:cAnimSet.candidateFrames[i]]:
@@ -761,7 +761,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                         myRect.width -= 48
                                         removeCenterSet = GUI.Button(myRect, "Remove $autotileAnimSetName/$cSetKey")
                                         if removeCenterSet:
-                                            Undo.RegisterUndo(config, "Remove Center Set $autotileAnimSetName/$cSetKey")
+                                            Undo.RecordObject(config, "Remove Center Set $autotileAnimSetName/$cSetKey")
                                             trash.Push(cSetKey)
                                             EditorUtility.SetDirty(config)
 
@@ -776,7 +776,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                 EditorGUILayout.BeginHorizontal()
                                 EditorGUILayout.LabelField("$(csEntry.Key) (missing)")
                                 if GUILayout.Button("Remove $(csEntry.Key)", GUILayout.Width(160)):
-                                    Undo.RegisterUndo(config, "Remove Center Set $(csEntry.Key)")
+                                    Undo.RecordObject(config, "Remove Center Set $(csEntry.Key)")
                                     trash.Push(csEntry.Key)
                                 EditorGUILayout.EndHorizontal()
 
@@ -820,7 +820,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                                     myRect.x += 40
                                     myRect.width -= 40
                                     if GUI.Button(myRect, "Apply"):
-                                        Undo.RegisterUndo(config, "Change number of animation frames")
+                                        Undo.RecordObject(config, "Change number of animation frames")
                                         newFrameTiles = array(AnimationTile, animCorners.candidateFrames[i])
                                         refIndex = -1
                                         for t in animCorners[i][:animCorners.candidateFrames[i]]:
@@ -842,7 +842,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                         myRect.x += 32
                         myRect.width -= 32
                         if GUI.Button(myRect, "Remove $autotileAnimSetName"):
-                            Undo.RegisterUndo(config, "Remove Set $autotileAnimSetName")
+                            Undo.RecordObject(config, "Remove Set $autotileAnimSetName")
                             animTileSetTrash.Push(autotileAnimSetName)
                             EditorUtility.SetDirty(config)
 

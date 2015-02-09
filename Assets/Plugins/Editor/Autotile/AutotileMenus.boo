@@ -107,9 +107,9 @@ static class AutotileMenus:
             unless o.GetComponent of Autotile():
                 changed_objects.Add(o)
         if changed_objects.Count > 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile components")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile components")
         elif changed_objects.Count == 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile component")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile component")
         for o in changed_objects:
             t = o.AddComponent of Autotile()
             if AutotileConfig.config.sets.Count:
@@ -128,9 +128,9 @@ static class AutotileMenus:
             unless o.GetComponent of AutotileAnimation():
                 changed_objects.Add(o)
         if changed_objects.Count > 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile Animation components")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile Animation components")
         elif changed_objects.Count == 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile Animation component")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile Animation component")
         for o in changed_objects:
             t = o.AddComponent of AutotileAnimation()
             if AutotileConfig.config.sets.Count:

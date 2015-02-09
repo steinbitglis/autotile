@@ -35,9 +35,10 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                 ts = AutotileConfig.config.animationSets[t.tilesetKey]
                 tsm = ts.material if ts
                 mt = tsm.mainTexture if tsm
-                if mt and t.renderer.sharedMaterial != tsm:
-                    t.renderer.material = tsm
-                    EditorUtility.SetDirty(t.renderer)
+                r = t.GetComponent[of Renderer]()
+                if mt and r.sharedMaterial != tsm:
+                    r.material = tsm
+                    EditorUtility.SetDirty(r)
             except e as KeyNotFoundException:
                 missing_tileset = missing_tileset or t == tile
                 Debug.LogError("The key $(t.tilesetKey) was missing in the tileset config")
@@ -91,7 +92,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                 if tilesets[newIndex] != t.tilesetKey:
                     unless undoSaved:
                         undoSaved = true
-                        Undo.RegisterUndo(serializedObject.targetObjects, "Change AutotileAnimation tileset")
+                        Undo.RecordObjects(serializedObject.targetObjects, "Change AutotileAnimation tileset")
                     t.tilesetKey = tilesets[newIndex]
                     new_material = AutotileConfig.config.animationSets[t.tilesetKey].material
                     r = t.GetComponent[of Renderer]()
@@ -116,7 +117,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
         newUseCorner = EditorGUILayout.EnumMaskField(GUIContent("Corners"), tile.useCorner)
 
         if tile.useCorner cast System.Enum != newUseCorner:
-            Undo.RegisterUndo(tile, "Change tile corner")
+            Undo.RecordObject(tile, "Change tile corner")
             tile.useCorner = newUseCorner
             Refresh(tile)
             EditorUtility.SetDirty(tile)
@@ -125,7 +126,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
 
         if tile.useFramerateOverride != newUseFrameRateOverride:
             changesToFramerate = true
-            Undo.RegisterUndo(tile, "Change 'Use custom framerate'")
+            Undo.RecordObject(tile, "Change 'Use custom framerate'")
             tile.useFramerateOverride = newUseFrameRateOverride
 
         if tile.useFramerateOverride:
@@ -133,7 +134,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
 
             if tile.framerateOverride != newFramerateOverride:
                 changesToFramerate = true
-                Undo.RegisterUndo(tile, "Change 'Custom framerate'")
+                Undo.RecordObject(tile, "Change 'Custom framerate'")
                 tile.framerateOverride = newFramerateOverride
 
         if changesToFramerate:
@@ -144,7 +145,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
         if GUILayout.Button("Rebuild animations thas use '$(tile.tilesetKey)'"):
             tiles = FindObjectsOfType(AutotileAnimation)
             tilesWithSameKey = array(AutotileAnimation, (t for t in tiles if t.tilesetKey == tile.tilesetKey))
-            Undo.RegisterUndo(tilesWithSameKey, "Rebuild animations")
+            Undo.RecordObjects(tilesWithSameKey, "Rebuild animations")
             for t in tilesWithSameKey:
                 t.dirty = true
                 Refresh(t)
@@ -178,13 +179,9 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
         serializedObject.ApplyModifiedProperties()
         Refresh(tile)
 
-    def SnapshotImmediately():
+    def RecordAutotiles():
         affected = array(Component, (tile, tile.transform))
-        Undo.SetSnapshotTarget(affected, "Resize/Move Autotile Animations")
-
-        Undo.CreateSnapshot()
-        Undo.RegisterSnapshot()
-        Undo.ClearSnapshotTarget()
+        Undo.RecordObjects(affected, "Resize/Move Autotile Animations")
 
     def NormalizeScales():
         tile.transform.localRotation = Quaternion.identity
@@ -204,4 +201,4 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
             Refresh(tile)
 
         elif Event.current.type == EventType.MouseDown and Event.current.button == 0:
-            SnapshotImmediately()
+            RecordAutotiles()
