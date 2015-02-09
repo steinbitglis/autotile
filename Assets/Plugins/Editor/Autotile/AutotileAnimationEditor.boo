@@ -94,9 +94,10 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                         Undo.RegisterUndo(serializedObject.targetObjects, "Change AutotileAnimation tileset")
                     t.tilesetKey = tilesets[newIndex]
                     new_material = AutotileConfig.config.animationSets[t.tilesetKey].material
-                    unless t.renderer.sharedMaterial == new_material:
-                        t.renderer.material = AutotileConfig.config.animationSets[t.tilesetKey].material
-                        EditorUtility.SetDirty(t.renderer)
+                    r = t.GetComponent[of Renderer]()
+                    unless r.sharedMaterial == new_material:
+                        r.material = AutotileConfig.config.animationSets[t.tilesetKey].material
+                        EditorUtility.SetDirty(r)
                     missing_tileset = false
                     Refresh(t) if serializedObject.isEditingMultipleObjects
 

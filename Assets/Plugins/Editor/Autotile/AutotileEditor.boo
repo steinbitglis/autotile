@@ -209,7 +209,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
         f(screen)
         screen.airInfo = blackAirInfo
         screen.tilesetKey = tile.tilesetKey
-        screen.renderer.material = AutotileConfig.config.sets[screen.tilesetKey].material
+        screen.GetComponent[of Renderer]().material = AutotileConfig.config.sets[screen.tilesetKey].material
         screen.Rebuild()
         Undo.RegisterCreatedObjectUndo(screenObject, "Create dark tile")
         EditorUtility.SetDirty(tile)
@@ -238,9 +238,10 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                         Undo.RegisterUndo(serializedObject.targetObjects, "Change Autotile tileset")
                     t.tilesetKey = tilesets[newIndex]
                     new_material = AutotileConfig.config.sets[t.tilesetKey].material
-                    unless t.renderer.sharedMaterial == new_material:
-                        t.renderer.material = AutotileConfig.config.sets[t.tilesetKey].material
-                        EditorUtility.SetDirty(t.renderer)
+                    r = t.GetComponent[of Renderer]()
+                    unless r.sharedMaterial == new_material:
+                        r.material = AutotileConfig.config.sets[t.tilesetKey].material
+                        EditorUtility.SetDirty(r)
                     missing_tileset = false
                     Refresh(t) if serializedObject.isEditingMultipleObjects
 

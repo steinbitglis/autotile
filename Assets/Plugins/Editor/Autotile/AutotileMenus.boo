@@ -74,7 +74,7 @@ static class AutotileMenus:
         targetObject.transform.localRotation = Quaternion.identity
         if AutotileConfig.config.animationSets.Count:
             target.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
-            target.renderer.material = AutotileConfig.config.animationSets.First().material
+            target.GetComponent[of Renderer]().material = AutotileConfig.config.animationSets.First().material
             target.Refresh()
         EditorGUIUtility.PingObject(targetObject)
         Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
@@ -91,7 +91,7 @@ static class AutotileMenus:
         targetObject.transform.localRotation = Quaternion.identity
         if AutotileConfig.config.sets.Count:
             target.tilesetKey = AutotileConfig.config.sets.FirstKey()
-            target.renderer.material = AutotileConfig.config.sets.First().material
+            target.GetComponent[of Renderer]().material = AutotileConfig.config.sets.First().material
             target.Refresh()
         EditorGUIUtility.PingObject(targetObject)
         Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
@@ -114,7 +114,7 @@ static class AutotileMenus:
             t = o.AddComponent of Autotile()
             if AutotileConfig.config.sets.Count:
                 t.tilesetKey = AutotileConfig.config.sets.FirstKey()
-                t.renderer.material = AutotileConfig.config.sets.First().material
+                t.GetComponent[of Renderer]().material = AutotileConfig.config.sets.First().material
                 t.Refresh()
 
     [MenuItem ("Component/Plugins/Autotile Animation", true)]
@@ -135,5 +135,5 @@ static class AutotileMenus:
             t = o.AddComponent of AutotileAnimation()
             if AutotileConfig.config.sets.Count:
                 t.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
-                t.renderer.material = AutotileConfig.config.animationSets.First().material
+                t.GetComponent[of Renderer]().material = AutotileConfig.config.animationSets.First().material
                 t.Refresh()
