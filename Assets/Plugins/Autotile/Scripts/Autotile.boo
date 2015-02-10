@@ -353,8 +353,8 @@ class Autotile (AutotileBase):
                     connections.reverse[index] = -1
 
     override def Awake():
-        super()
         ifdef UNITY_EDITOR:
+            super()
             unless Application.isPlaying:
                 applied_non_serialized_scale = applied_scale
                 mf = GetComponent of MeshFilter()
@@ -373,6 +373,8 @@ class Autotile (AutotileBase):
 
                 boxCollider = GetComponent of BoxCollider()
                 Refresh()
+        ifdef not UNITY_EDITOR:
+            enabled = false
 
     def Reset():
         GetComponent of MeshFilter().sharedMesh = Mesh()
@@ -907,6 +909,7 @@ class Autotile (AutotileBase):
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
             mf.sharedMesh.uv = AutotileBase.TileUVs(left, uvMargin) + AutotileBase.TileUVs(right, uvMargin)
+            mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -1029,6 +1032,7 @@ class Autotile (AutotileBase):
         mf.sharedMesh.vertices = vertices
         mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
         mf.sharedMesh.uv = uvs
+        mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
         mf.sharedMesh.RecalculateNormals()
         mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
@@ -1046,6 +1050,7 @@ class Autotile (AutotileBase):
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleVerticalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
             mf.sharedMesh.uv = AutotileBase.TileUVs(bottom, uvMargin) + AutotileBase.TileUVs(top, uvMargin)
+            mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -1062,6 +1067,7 @@ class Autotile (AutotileBase):
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.singleVertices)
             mf.sharedMesh.triangles = AutotileBase.singleTriangles
             mf.sharedMesh.uv = uvs
+            mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -1490,10 +1496,11 @@ class Autotile (AutotileBase):
             dirty = true
 
     override def Refresh():
-        boxCollider = GetComponent of BoxCollider() unless boxCollider
-        ApplyAirInfo()
-        ApplyBoxColliderMargin()
-        ApplyMarginMode()
+        if localRenderer.enabled:
+            boxCollider = GetComponent of BoxCollider() unless boxCollider
+            ApplyAirInfo()
+            ApplyBoxColliderMargin()
+            ApplyMarginMode()
         super()
 
     static def WrappingLimitsXY(tiles as Generic.IEnumerable[of Autotile], ref result as (single)):

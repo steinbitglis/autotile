@@ -368,7 +368,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
             changedUVMode = EditorGUILayout.EnumPopup("UV margin mode", c.uvMarginMode)
             if changedUVMode != c.uvMarginMode cast System.Enum:
-                Undo.RegisterUndo(config, "Change $name uv margin mode")
+                Undo.RecordObject(config, "Change $name uv margin mode")
                 c.uvMarginMode = changedUVMode
 
             changedMaterial = EditorGUILayout.ObjectField("Material", c.material, Material, false)

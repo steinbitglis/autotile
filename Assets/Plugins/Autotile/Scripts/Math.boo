@@ -1,5 +1,4 @@
 import UnityEngine
-import System.Collections.Generic
 
 static class MathUtil:
 
@@ -66,24 +65,38 @@ static class MathOfPlanes:
         else:
             return MathOfPlanes.StandardSquare
 
-    def RectIntersectsRect(remote as IEnumerator[of Vector2]) as bool:
+    def RectIntersectsRect(remote as (Vector2)) as bool:
         outsideTop = outsideLeft = outsideRight = outsideBottom = true
-
-        for v as Vector2 in remote:
-            outsideTop = outsideTop and v.y > StandardSquare[2].y
-            outsideLeft = outsideLeft and v.x < StandardSquare[0].x
-            outsideRight = outsideRight and v.x > StandardSquare[2].x
-            outsideBottom = outsideBottom and v.y < StandardSquare[0].y
+        i = 0
+        while i < 4:
+            outsideTop = outsideTop and remote[i].y > StandardSquare[2].y
+            outsideLeft = outsideLeft and remote[i].x < StandardSquare[0].x
+            outsideRight = outsideRight and remote[i].x > StandardSquare[2].x
+            outsideBottom = outsideBottom and remote[i].y < StandardSquare[0].y
+            i += 1
 
         return not (outsideTop or outsideLeft or outsideRight or outsideBottom)
 
-    def RectIntersectsRect(local as (Vector2), remote as IEnumerator[of Vector2]) as bool:
+    def RectIntersectsRect(local as (Vector2), remote as (Vector2)) as bool:
         outsideTop = outsideLeft = outsideRight = outsideBottom = true
+        i = 0
+        while i < 4:
+            outsideTop = outsideTop and remote[i].y > local[2].y
+            outsideLeft = outsideLeft and remote[i].x < local[0].x
+            outsideRight = outsideRight and remote[i].x > local[2].x
+            outsideBottom = outsideBottom and remote[i].y < local[0].y
+            i += 1
 
-        for v as Vector2 in remote:
-            outsideTop = outsideTop and v.y > local[2].y
-            outsideLeft = outsideLeft and v.x < local[0].x
-            outsideRight = outsideRight and v.x > local[2].x
-            outsideBottom = outsideBottom and v.y < local[0].y
+        return not (outsideTop or outsideLeft or outsideRight or outsideBottom)
+
+    def RectIntersectsRect(localMin as Vector2, localMax as Vector2, remote as (Vector2)) as bool:
+        outsideTop = outsideLeft = outsideRight = outsideBottom = true
+        i = 0
+        while i < 4:
+            outsideTop = outsideTop and remote[i].y > localMax.y
+            outsideLeft = outsideLeft and remote[i].x < localMin.x
+            outsideRight = outsideRight and remote[i].x > localMax.x
+            outsideBottom = outsideBottom and remote[i].y < localMin.y
+            i += 1
 
         return not (outsideTop or outsideLeft or outsideRight or outsideBottom)

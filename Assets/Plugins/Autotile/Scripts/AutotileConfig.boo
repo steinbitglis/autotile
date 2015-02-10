@@ -9,7 +9,7 @@ class AutotileConfig (ScriptableObject):
         get:
             unless autotileConfig:
                 if tilesetsPath =~ @/^Assets\/Resources\//:
-                    extension = Path.GetExtension(tilesetsPath)
+                    extension = System.IO.Path.GetExtension(tilesetsPath)
                     target = (tilesetsPath[17:])[:-extension.Length] # Resources.Load requires path relative to 'Assets/Resources' minus extension
                     autotileConfig = Resources.Load(target, AutotileConfig)
                 else:

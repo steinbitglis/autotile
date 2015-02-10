@@ -197,6 +197,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                     EditorUtility.SetDirty(t.localRenderer)
 
         elif Event.current.type == EventType.MouseUp and Event.current.button == 0:
+            RecordAutotiles()
             NormalizeScales()
             Refresh(tile)
 

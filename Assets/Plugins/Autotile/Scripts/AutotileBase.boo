@@ -39,8 +39,7 @@ class AutotileBase (MonoBehaviour):
 
     public static allAutotileBases = System.Collections.Generic.List of AutotileBase()
 
-    virtual def Awake():
-        localRenderer = GetComponent[of Renderer]()
+    virtual def Awake(): # Only for use in editor
         allAutotileBases.Add(self) unless self in allAutotileBases
 
     virtual def OnDestroy():
@@ -51,8 +50,11 @@ class AutotileBase (MonoBehaviour):
     public secondaryTileMode = TileMode.Centric
     public squeezeMode = SqueezeMode.Clip
 
-    [System.NonSerialized]
-    public localRenderer as MeshRenderer
+    localRenderer as MeshRenderer:
+        get:
+            _localRenderer = GetComponent of MeshRenderer() unless _localRenderer
+            return _localRenderer
+    private _localRenderer as MeshRenderer
 
     public useCorner = AutotileBaseCorner.Left | AutotileBaseCorner.Right | AutotileBaseCorner.Bottom | AutotileBaseCorner.Top
 
@@ -184,6 +186,15 @@ class AutotileBase (MonoBehaviour):
                     t.localPosition += delta
         get:
             return _offsetMode
+
+    def WhiteColors(mesh as Mesh) as (Color):
+        l = mesh.vertices.Length
+        r = array(Color, l)
+        i = 0
+        while i < l:
+            r[i] = Color.white
+            i += 1
+        return r
 
     virtual def Update():
         ifdef UNITY_EDITOR:
@@ -320,10 +331,11 @@ class AutotileBase (MonoBehaviour):
         pass
 
     virtual def Refresh():
-        ApplyTilesetKey()
-        ApplyOffset()
-        ApplyUseCorner()
-        ApplyScale()
+        if localRenderer.enabled:
+            ApplyTilesetKey()
+            ApplyOffset()
+            ApplyUseCorner()
+            ApplyScale()
 
     [ContextMenu("Force Rebuild")]
     def Rebuild():

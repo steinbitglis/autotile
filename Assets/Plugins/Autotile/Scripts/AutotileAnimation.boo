@@ -95,16 +95,13 @@ class AutotileAnimation (AutotileBase):
     protected applied_position = Vector3.zero
 
     def tryLoadFramesPerSecond():
-        try:
-            framesPerSecond = AutotileConfig.config.animationSets[tilesetKey].framesPerSecond
-        except e as Generic.KeyNotFoundException:
-            return
-        except e as System.ArgumentNullException:
-            return
+        animationTileset as AutotileAnimationSet
+        AutotileConfig.config.animationSets.TryGetValue(tilesetKey, animationTileset)
+        framesPerSecond = animationTileset.framesPerSecond if animationTileset
 
     override def Awake():
-        super()
         ifdef UNITY_EDITOR:
+            super()
             tryLoadFramesPerSecond()
             unless Application.isPlaying:
                 applied_non_serialized_scale = applied_scale
@@ -125,15 +122,19 @@ class AutotileAnimation (AutotileBase):
                     dirty = true
 
                 Refresh()
+        ifdef not UNITY_EDITOR:
+            pass
 
     override def Update():
-        super()
+        ifdef UNITY_EDITOR:
+            super()
         if Time.time > lastTime + _frameDuration:
-            lastTime = Time.time
+            n = Mathf.Floor((Time.time - lastTime) / _frameDuration) # Mathf.Floor, not Mathf.Round, because we should not project any portion of _frameDuration into the future, it might be changed
+            lastTime += n * _frameDuration
             if cache.dirty:
-                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations.", self)
+                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations. Scene refreshing fixes this automatically.", self)
             else:
-                localMesh.uv = cache.next_uvs(self)
+                localMesh.uv = cache.next_uvs(self, n cast int)
 
     def RewriteUVsHack():
         # Hack! Sometimes uv's needs to be reset when the rotation is changed. Otherwise it displays backwards.
@@ -281,19 +282,22 @@ class AutotileAnimation (AutotileBase):
         private _usingIndexedAnimations as bool
 
         def next_uvs(aa as AutotileAnimation) as (Vector2):
+            return next_uvs(aa, 1)
+
+        def next_uvs(aa as AutotileAnimation, increment as int) as (Vector2):
             if bypass_cache and not built:
                 result_cache = List of Vector2()
                 for ai as int in _animationSourceIndexes:
                     result_cache.Extend(_animationSources[ai].singleFrameUVs(currentFrame))
                 _lcm = MathUtil.LCM(array(int, (a.totalLength for a in _animationSources)))
-                currentFrame = (currentFrame + 1) % _lcm
+                currentFrame = (currentFrame + increment) % _lcm
                 return array(typeof(Vector2), result_cache)
             else:
                 unless built: # Rebuild if not playing
                     _build()
                     currentFrame %= _lcm
                 result = uvs[currentFrame]
-                currentFrame = (currentFrame + 1) % _lcm
+                currentFrame = (currentFrame + increment) % _lcm
                 return result
 
         def current_uvs(aa as AutotileAnimation) as (Vector2):
@@ -423,6 +427,7 @@ class AutotileAnimation (AutotileBase):
         mf.sharedMesh.vertices = vertices
         mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
         mf.sharedMesh.uv = cache.current_uvs(self)
+        mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
         mf.sharedMesh.RecalculateNormals()
         mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
@@ -440,6 +445,7 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleHorizontalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
             mf.sharedMesh.uv = cache.current_uvs(self)
+            mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -457,6 +463,7 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.doubleVerticalVertices)
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
             mf.sharedMesh.uv = cache.current_uvs(self)
+            mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
@@ -470,6 +477,7 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.vertices = OffsetVertices(AutotileBase.singleVertices)
             mf.sharedMesh.triangles = AutotileBase.singleTriangles
             mf.sharedMesh.uv = cache.current_uvs(self)
+            mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
             mf.sharedMesh.RecalculateNormals()
             mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true

@@ -54,7 +54,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 ts = AutotileConfig.config.sets[t.tilesetKey]
                 tsm = ts.material if ts
                 mt = tsm.mainTexture if tsm
-                r = t.GetComponent[of Renderer]()
+                r = t.GetComponent[of MeshRenderer]()
                 if mt and r.sharedMaterial != tsm:
                     r.material = tsm
                     EditorUtility.SetDirty(r)
@@ -515,7 +515,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 a = Autotile.ConnectionPosition(tile,   local_connection, -0.2f)
                 b = Autotile.ConnectionPosition(remote, remote_connection, -0.2f)
                 Handles.color = Color.blue
-                Handles.DrawAAPolyLine(0.03f, a, b)
+                Handles.DrawPolyLine(a, b)
 
     def MarginQuad(margin as single, tr as Transform) as (Vector2):
         w = tr.localScale.x

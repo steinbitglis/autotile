@@ -264,6 +264,9 @@ class AutotileAnimationSetDatabase (IEnumerable[of KeyValuePair[of string, Autot
         get:
             return self.backingDictionary[index]
 
+    public def TryGetValue(index as string, ref value as AutotileAnimationSet):
+        self.backingDictionary.TryGetValue(index, value)
+
     public Count as int:
         get:
             return self.backingDictionary.Count
