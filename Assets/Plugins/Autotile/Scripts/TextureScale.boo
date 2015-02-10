@@ -1,7 +1,3 @@
-## This script is a major modification of http://wiki.unity3d.com/index.php?title=TextureScale
-
-## Only works on ARGB32, RGB24 and Alpha8 textures that are marked readable
-
 import System.Threading
 
 interface TextureScaleProgressListener:
@@ -10,7 +6,7 @@ interface TextureScaleProgressListener:
 class TextureScaleTransform:
     public flip as TextureScaleFlip
     public rotate as TextureScaleRotate
-    def constructor (f as TextureScaleFlip, r as TextureScaleRotate):
+    def constructor(f as TextureScaleFlip, r as TextureScaleRotate):
         flip = f
         rotate = r
 
@@ -27,14 +23,12 @@ enum TextureScaleRotate:
     _180
 
 class TextureScale:
-
     class ThreadData:
         public start as int
         public end as int
         public report as bool
         public flip as TextureScaleFlip
         public rotate as TextureScaleRotate
-
         def constructor (s as int, e as int, r as bool, f as TextureScaleFlip, ro as TextureScaleRotate):
             start = s
             end = e
@@ -74,7 +68,7 @@ class TextureScale:
         TextureScale.ThreadedScale(tex, newWidth, newHeight, result, TextureScaleTransform(TextureScaleFlip.None, TextureScaleRotate.None))
 
     private static def ThreadedScale (tex as Texture2D, newWidth as int, newHeight as int, result as Texture2D, transform as TextureScaleTransform):
-        unless mutex:
+        if mutex == null:
             mutex = Mutex(false)
         try:
             texColors = tex.GetPixels()
@@ -83,8 +77,8 @@ class TextureScale:
             texSource = tex
             outOfMemory = true
         newColors = array(Color, newWidth * newHeight)
-        ratioX = 1.0 / ((newWidth cast single)  / (tex.width-1))
-        ratioY = 1.0 / ((newHeight cast single) / (tex.height-1))
+        ratioX = 1.0 / (newWidth cast single / (tex.width-1))
+        ratioY = 1.0 / (newHeight cast single / (tex.height-1))
         w = tex.width
         w2 = newWidth
         h2 = newHeight
@@ -160,11 +154,10 @@ class TextureScale:
                     newColors[target_y * w2 + target_x] = ColorLerpUnclamped(ColorLerpUnclamped(texColors[y1 + xFloor], texColors[y1 + xFloor+1], xLerp),
                                                                              ColorLerpUnclamped(texColors[y2 + xFloor], texColors[y2 + xFloor+1], xLerp),
                                                                              y*ratioY-yFloor)
-
                 x += 1
 
             if threadData.report:
-                d = y - threadData.start
+                d as single = y - threadData.start
                 if listener:
                     listener.Progress(d / (threadData.end - threadData.start))
 
@@ -175,7 +168,7 @@ class TextureScale:
         mutex.ReleaseMutex()
 
     private static def ColorLerpUnclamped (c1 as Color, c2 as Color, value as single) as Color:
-        return Color (c1.r + (c2.r - c1.r)*value,
-                      c1.g + (c2.g - c1.g)*value,
-                      c1.b + (c2.b - c1.b)*value,
-                      c1.a + (c2.a - c1.a)*value)
+        return Color(c1.r + (c2.r - c1.r)*value,
+                     c1.g + (c2.g - c1.g)*value,
+                     c1.b + (c2.b - c1.b)*value,
+                     c1.a + (c2.a - c1.a)*value)

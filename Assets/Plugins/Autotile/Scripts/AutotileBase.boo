@@ -40,7 +40,7 @@ class AutotileBase (MonoBehaviour):
     public static allAutotileBases = System.Collections.Generic.List of AutotileBase()
 
     virtual def Awake():
-        localRenderer = renderer
+        localRenderer = GetComponent[of Renderer]()
         allAutotileBases.Add(self) unless self in allAutotileBases
 
     virtual def OnDestroy():

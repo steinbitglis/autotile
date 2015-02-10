@@ -78,7 +78,7 @@ static class AutotileMenus:
         targetObject.transform.localRotation = Quaternion.identity
         if AutotileConfig.config.animationSets.Count:
             target.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
-            target.renderer.material = AutotileConfig.config.animationSets.First().material
+            target.GetComponent[of Renderer]().material = AutotileConfig.config.animationSets.First().material
             target.Refresh()
         EditorGUIUtility.PingObject(targetObject)
         Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
@@ -95,7 +95,7 @@ static class AutotileMenus:
         targetObject.transform.localRotation = Quaternion.identity
         if AutotileConfig.config.sets.Count:
             target.tilesetKey = AutotileConfig.config.sets.FirstKey()
-            target.renderer.material = AutotileConfig.config.sets.First().material
+            target.GetComponent[of Renderer]().material = AutotileConfig.config.sets.First().material
             target.Refresh()
         EditorGUIUtility.PingObject(targetObject)
         Undo.RegisterCreatedObjectUndo(targetObject, "Create Autotile")
@@ -111,14 +111,14 @@ static class AutotileMenus:
             unless o.GetComponent of Autotile():
                 changed_objects.Add(o)
         if changed_objects.Count > 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile components")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile components")
         elif changed_objects.Count == 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile component")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile component")
         for o in changed_objects:
             t = o.AddComponent of Autotile()
             if AutotileConfig.config.sets.Count:
                 t.tilesetKey = AutotileConfig.config.sets.FirstKey()
-                t.renderer.material = AutotileConfig.config.sets.First().material
+                t.GetComponent[of Renderer]().material = AutotileConfig.config.sets.First().material
                 t.Refresh()
 
     [MenuItem ("Component/Plugins/Autotile Animation", true)]
@@ -132,12 +132,12 @@ static class AutotileMenus:
             unless o.GetComponent of AutotileAnimation():
                 changed_objects.Add(o)
         if changed_objects.Count > 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile Animation components")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile Animation components")
         elif changed_objects.Count == 1:
-            Undo.RegisterUndo(array(Object, changed_objects), "Create Autotile Animation component")
+            Undo.RecordObjects(array(Object, changed_objects), "Create Autotile Animation component")
         for o in changed_objects:
             t = o.AddComponent of AutotileAnimation()
             if AutotileConfig.config.sets.Count:
                 t.tilesetKey = AutotileConfig.config.animationSets.FirstKey()
-                t.renderer.material = AutotileConfig.config.animationSets.First().material
+                t.GetComponent[of Renderer]().material = AutotileConfig.config.animationSets.First().material
                 t.Refresh()
