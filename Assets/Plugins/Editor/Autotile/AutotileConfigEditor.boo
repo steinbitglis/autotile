@@ -14,6 +14,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
     class TilesetCandidate:
         public name = ""
         public material as Material
+        public materialAvailableInRuntime = false
         public uvMarginMode as UVMarginMode
         public tileSize = 128
         public show = false
@@ -77,6 +78,10 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
         autotileImages = config.sets.Count
         autotileAnimationImages = config.animationSets.Count
         imagesBeingResized = autotileImages + autotileAnimationImages
+
+        #Make configs populate GUIDS from material references
+        #config.sets.ReadGUIDS()
+        #config.animationSets.ReadGUIDS()
 
         for i as int, setEntry as KeyValuePair[of string, AutotileSet] in enumerate(config.sets):
             imageBeingResized = i
@@ -298,6 +303,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             c.tileSize = EditorGUILayout.IntField("Tile Size", c.tileSize)
             c.uvMarginMode = EditorGUILayout.EnumPopup("UV Margin Mode", c.uvMarginMode)
             c.material = EditorGUILayout.ObjectField("Material", c.material, Material, false)
+            c.materialAvailableInRuntime = EditorGUILayout.Toggle("Runtime", c.materialAvailableInRuntime)
             if c isa TilesetAnimationCandidate:
                 ac = c as TilesetAnimationCandidate
                 ac.framesPerSecond = EditorGUILayout.FloatField("Frames Per Second", ac.framesPerSecond)
@@ -324,6 +330,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
             c.name = ""
             c.tileSize = 128
             c.uvMarginMode = UVMarginMode.NoMargin
+            c.materialAvailableInRuntime = true
             c.material = null
             if c isa TilesetAnimationCandidate:
                 ac = c as TilesetAnimationCandidate
@@ -388,6 +395,11 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
                 PopulateAtlasPreview(c, name)
                 EditorUtility.ClearProgressBar()
 
+            changedMatInRuntime = EditorGUILayout.Toggle("Runtime", c.materialAvailableInRuntime)
+            if changedMatInRuntime != c.materialAvailableInRuntime:
+                Undo.RecordObject(config, "Change $name runtime")
+                c.materialAvailableInRuntime = changedMatInRuntime
+
             if c isa AutotileAnimationSet:
                 animSet = c as AutotileAnimationSet
                 changedFramesPerSecond = EditorGUILayout.FloatField("Frames Per Second", animSet.framesPerSecond)
@@ -435,6 +447,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
             PresentAndGetNewCandidate(candidate, {s as string | return not config.sets.ContainsKey(s)}) do(c):
                 newSet = AutotileSet()
+                newSet.materialAvailableInRuntime = c.materialAvailableInRuntime
                 newSet.material = c.material
                 newSet.uvMarginMode = c.uvMarginMode
                 newSet.tileSize = c.tileSize
@@ -629,6 +642,7 @@ class AutotileConfigEditor (Editor, TextureScaleProgressListener):
 
             PresentAndGetNewCandidate(animationCandidate, {s as string | return not config.animationSets.ContainsKey(s)}) do(c):
                 newAnimSet = AutotileAnimationSet()
+                newAnimSet.materialAvailableInRuntime = c.materialAvailableInRuntime
                 newAnimSet.material = c.material
                 newAnimSet.tileSize = c.tileSize
                 ac = c as TilesetAnimationCandidate

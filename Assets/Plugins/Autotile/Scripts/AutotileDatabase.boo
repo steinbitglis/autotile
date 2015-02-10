@@ -388,6 +388,10 @@ class AutotileSetDatabase (IEnumerable[of KeyValuePair[of string, AutotileSet]])
         get:
             return self.backingDictionary[index]
 
+    public def ReadGUIDS():
+        for v in values:
+            v.ReadGUID()
+
     public Count as int:
         get:
             return self.backingDictionary.Count

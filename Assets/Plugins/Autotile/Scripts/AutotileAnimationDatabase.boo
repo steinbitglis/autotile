@@ -267,6 +267,10 @@ class AutotileAnimationSetDatabase (IEnumerable[of KeyValuePair[of string, Autot
     public def TryGetValue(index as string, ref value as AutotileAnimationSet):
         self.backingDictionary.TryGetValue(index, value)
 
+    public def ReadGUIDS():
+        for v in values:
+            v.ReadGUID()
+
     public Count as int:
         get:
             return self.backingDictionary.Count

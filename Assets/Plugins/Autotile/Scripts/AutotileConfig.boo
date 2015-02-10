@@ -2,7 +2,7 @@ import UnityEngine
 
 class AutotileConfig (ScriptableObject):
 
-    static public final tilesetsPath = "Assets/Plugins/Autotile/Tilesets.asset"
+    static public final tilesetsPath = "Assets/Resources/Autotile/Tilesets.asset"
     static private autotileConfig as AutotileConfig
 
     static config as AutotileConfig:
