@@ -62,15 +62,8 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 missing_tileset = missing_tileset or t == tile
                 Debug.LogError("The key $(t.tilesetKey) was missing in the tileset config")
 
-        p = RecordAutotiles as EditorApplication.CallbackFunction
-        unless EditorApplication.modifierKeysChanged and p in EditorApplication.modifierKeysChanged.GetInvocationList():
-            EditorApplication.modifierKeysChanged = System.Delegate.Combine(EditorApplication.modifierKeysChanged, p)
-
     def OnDisable():
         Tools.pivotMode = prev_pivot_mode
-
-        p = RecordAutotiles as EditorApplication.CallbackFunction
-        EditorApplication.modifierKeysChanged = System.Delegate.RemoveAll(EditorApplication.modifierKeysChanged, p)
 
     def Progress(s as single):
         pass
@@ -140,48 +133,48 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 nextPreview.hideFlags = HideFlags.DontSave
                 DestroyImmediate(tile.preview)
                 if tile.tileMode == TileMode.Horizontal:
-                    _preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                    myPreview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     if tile.previewAnathomy.drawsLeft:
-                        GetPreview(tile.getLeftCorner(), ts.tileSize, mt, _preview)
-                        nextPreview.SetPixels(0, 15, 30, 30, _preview.GetPixels())
+                        GetPreview(tile.getLeftCorner(), ts.tileSize, mt, myPreview)
+                        nextPreview.SetPixels(0, 15, 30, 30, myPreview.GetPixels())
                     if c_w:
-                        DestroyImmediate(_preview)
-                        _preview = Texture2D(c_w, 30, TextureFormat.ARGB32, false)
-                        GetPreview(tile.getCenterPiece(), ts.tileSize, mt, _preview)
-                        nextPreview.SetPixels(left_w, 15, c_w, 30, _preview.GetPixels())
-                        DestroyImmediate(_preview)
-                        _preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                        DestroyImmediate(myPreview)
+                        myPreview = Texture2D(c_w, 30, TextureFormat.ARGB32, false)
+                        GetPreview(tile.getCenterPiece(), ts.tileSize, mt, myPreview)
+                        nextPreview.SetPixels(left_w, 15, c_w, 30, myPreview.GetPixels())
+                        DestroyImmediate(myPreview)
+                        myPreview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     if tile.previewAnathomy.drawsRight:
-                        GetPreview(tile.getRightCorner(), ts.tileSize, mt, _preview)
-                        nextPreview.SetPixels(left_w + c_w, 15, 30, 30, _preview.GetPixels())
+                        GetPreview(tile.getRightCorner(), ts.tileSize, mt, myPreview)
+                        nextPreview.SetPixels(left_w + c_w, 15, 30, 30, myPreview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
-                    DestroyImmediate(_preview)
+                    DestroyImmediate(myPreview)
                 elif tile.tileMode == TileMode.Vertical:
-                    _preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                    myPreview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     if tile.previewAnathomy.drawsTop:
-                        GetPreview(tile.getTopCorner(), ts.tileSize, mt, _preview)
-                        nextPreview.SetPixels(15, bottom_h + c_h, 30, 30, _preview.GetPixels())
+                        GetPreview(tile.getTopCorner(), ts.tileSize, mt, myPreview)
+                        nextPreview.SetPixels(15, bottom_h + c_h, 30, 30, myPreview.GetPixels())
                     if c_h:
-                        DestroyImmediate(_preview)
-                        _preview = Texture2D(30, c_h, TextureFormat.ARGB32, false)
-                        GetPreview(tile.getCenterPiece(), ts.tileSize, mt, _preview)
-                        nextPreview.SetPixels(15, bottom_h, 30, c_h, _preview.GetPixels())
-                        DestroyImmediate(_preview)
-                        _preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                        DestroyImmediate(myPreview)
+                        myPreview = Texture2D(30, c_h, TextureFormat.ARGB32, false)
+                        GetPreview(tile.getCenterPiece(), ts.tileSize, mt, myPreview)
+                        nextPreview.SetPixels(15, bottom_h, 30, c_h, myPreview.GetPixels())
+                        DestroyImmediate(myPreview)
+                        myPreview = Texture2D(30, 30, TextureFormat.ARGB32, false)
                     if tile.previewAnathomy.drawsBottom:
-                        GetPreview(tile.getBottomCorner(), ts.tileSize, mt, _preview)
-                        nextPreview.SetPixels(15, 0, 30, 30, _preview.GetPixels())
+                        GetPreview(tile.getBottomCorner(), ts.tileSize, mt, myPreview)
+                        nextPreview.SetPixels(15, 0, 30, 30, myPreview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
-                    DestroyImmediate(_preview)
+                    DestroyImmediate(myPreview)
                 else: # if tile.tileMode == TileMode.Centric:
-                    _preview = Texture2D(30, 30, TextureFormat.ARGB32, false)
-                    GetPreview(tile.getCentricCorner(), ts.tileSize, mt, _preview)
-                    nextPreview.SetPixels(15, 15, 30, 30, _preview.GetPixels())
+                    myPreview = Texture2D(30, 30, TextureFormat.ARGB32, false)
+                    GetPreview(tile.getCentricCorner(), ts.tileSize, mt, myPreview)
+                    nextPreview.SetPixels(15, 15, 30, 30, myPreview.GetPixels())
                     nextPreview.Apply()
                     tile.preview = nextPreview
-                    DestroyImmediate(_preview)
+                    DestroyImmediate(myPreview)
             except e as UnityException:
                 preview_failure = true
                 Debug.LogError("$(tile.gameObject.name) did not have a readable texture to preview")
@@ -241,10 +234,9 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                         Undo.RecordObjects(serializedObject.targetObjects, "Change Autotile tileset")
                     t.tilesetKey = tilesets[newIndex]
                     new_material = AutotileConfig.config.sets[t.tilesetKey].material
-                    r = t.GetComponent[of Renderer]()
-                    unless r.sharedMaterial == new_material:
-                        r.material = AutotileConfig.config.sets[t.tilesetKey].material
-                        EditorUtility.SetDirty(r)
+                    unless t.GetComponent[of Renderer]().sharedMaterial == new_material:
+                        t.GetComponent[of Renderer]().material = AutotileConfig.config.sets[t.tilesetKey].material
+                        EditorUtility.SetDirty(t.GetComponent[of Renderer]())
                     missing_tileset = false
                     Refresh(t) if serializedObject.isEditingMultipleObjects
 
@@ -528,9 +520,31 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             return (Vector2(-0.5f + margin_w, -0.5f + margin_h), Vector2(-0.5f + margin_w,  0.5f - margin_h),
                     Vector2( 0.5f - margin_w,  0.5f - margin_h), Vector2( 0.5f - margin_w, -0.5f + margin_h),)
 
-    def RecordAutotiles():
-        tiles = array(Transform, [t.transform for t in FindObjectsOfType(Autotile)])
-        Undo.RecordObjects(tiles, "Resize Autotile Length")
+    private tileUndoGroup as int
+    def StartResizeSnapshot():
+        #Debug.Log("start resize")
+        tileUndoGroup = Undo.GetCurrentGroup()
+        ctrlUndoGroup = 0 # no ctrl+scroll group when resizing
+
+    def EndResizeSnapshot():
+        #Debug.Log("end resize")
+        Undo.CollapseUndoOperations(tileUndoGroup) if tileUndoGroup
+        tileUndoGroup = 0
+
+    private ctrlUndoGroup as int
+    def StartCtrlSnapshot():
+        pass
+        #unless tileUndoGroup:
+        #    ctrlUndoGroup = Undo.GetCurrentGroup()
+        #    Debug.Log("ctrl snapshot $ctrlUndoGroup")
+        #if  tileUndoGroup:
+        #    Debug.Log("cannot create ctrl snapshot")
+
+    def EndCtrlSnapshot():
+        pass
+        #Debug.Log("end ctrl snapshot $ctrlUndoGroup")
+        #Undo.CollapseUndoOperations(ctrlUndoGroup) if ctrlUndoGroup
+        #ctrlUndoGroup = 0
 
     def NormalizeScales():
         tile.transform.localRotation = Quaternion.identity
@@ -574,18 +588,18 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     EditorUtility.SetDirty(t.localRenderer)
             DrawAutotileConnections()
 
-        elif Event.current.type == EventType.KeyDown:
-            if Event.current.keyCode == KeyCode.LeftControl or\
-               Event.current.keyCode == KeyCode.RightControl:
-                RecordAutotiles()
-
         elif Event.current.type == EventType.KeyUp:
             if Event.current.keyCode == KeyCode.LeftControl or\
                Event.current.keyCode == KeyCode.RightControl:
-                RecordAutotiles()
+                EndCtrlSnapshot()
+
+        elif Event.current.type == EventType.KeyDown:
+            pass
+            #if Event.current.keyCode == KeyCode.LeftControl or\
+            #   Event.current.keyCode == KeyCode.RightControl:
+            #    StartCtrlSnapshot()
 
         elif Event.current.type == EventType.ScrollWheel and Event.current.control:
-            RecordAutotiles()
             Refresh(tile)
             ccam = Camera.current
             mouseRay = ccam.ScreenPointToRay(Vector3(Event.current.mousePosition.x, ccam.pixelHeight - Event.current.mousePosition.y, 0.0f))
@@ -632,7 +646,6 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                     break
 
         elif Event.current.type == EventType.MouseUp and Event.current.button == 0:
-            RecordAutotiles()
             NormalizeScales()
             Refresh(tile)
 
@@ -649,7 +662,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
                 t_vertices3 = array(Vector3, ( to_local(from_other(v)) for v in other_collision_quad ))
                 t_vertices2 = System.Array.ConvertAll[of Vector3, Vector2](t_vertices3, {v as Vector3| return v})
 
-                intersects.Add(other_tile) if MathOfPlanes.RectIntersectsRect(local_collision_quad, t_vertices2)
+                intersects.Add(other_tile) if MathOfPlanes.RectIntersectsRect(local_collision_quad, (t_vertices2 as Generic.IEnumerable of Vector2))
 
             affected = Generic.List of Autotile(intersects)
             for n in tile.connections:
@@ -669,5 +682,7 @@ class AutotileEditor (Editor, TextureScaleProgressListener):
             for affected_transform in affected_transforms:
                 EditorUtility.SetDirty(affected_transform)
 
+            EndResizeSnapshot()
+
         elif Event.current.type == EventType.MouseDown and Event.current.button == 0:
-            RecordAutotiles()
+            StartResizeSnapshot()

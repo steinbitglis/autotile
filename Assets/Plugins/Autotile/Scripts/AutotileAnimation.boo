@@ -14,7 +14,7 @@ macro defCorner(cornerType as Boo.Lang.Compiler.Ast.ReferenceExpression):
             return result
     |]
 
-[RequireComponent(MeshRenderer), RequireComponent(MeshFilter), ExecuteInEditMode]
+[ExecuteInEditMode]
 class AutotileAnimation (AutotileBase):
 
     def OnDrawGizmos():
@@ -100,12 +100,14 @@ class AutotileAnimation (AutotileBase):
         framesPerSecond = animationTileset.framesPerSecond if animationTileset
 
     override def Awake():
+        mf = GetComponent of MeshFilter()
+        gameObject.AddComponent of MeshFilter() unless mf
+        gameObject.AddComponent of MeshRenderer() unless GetComponent of MeshRenderer()
         ifdef UNITY_EDITOR:
             super()
             tryLoadFramesPerSecond()
             unless Application.isPlaying:
                 applied_non_serialized_scale = applied_scale
-                mf = GetComponent of MeshFilter()
                 sm = mf.sharedMesh
                 if sm:
                     for t in FindObjectsOfType(AutotileAnimation):
@@ -122,8 +124,6 @@ class AutotileAnimation (AutotileBase):
                     dirty = true
 
                 Refresh()
-        ifdef not UNITY_EDITOR:
-            pass
 
     override def Update():
         ifdef UNITY_EDITOR:
@@ -132,7 +132,7 @@ class AutotileAnimation (AutotileBase):
             n = Mathf.Floor((Time.time - lastTime) / _frameDuration) # Mathf.Floor, not Mathf.Round, because we should not project any portion of _frameDuration into the future, it might be changed
             lastTime += n * _frameDuration
             if cache.dirty:
-                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations.", self)
+                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations. Scene refreshing fixes this automatically.", self)
             else:
                 localMesh.uv = cache.next_uvs(self, n cast int)
 
@@ -253,21 +253,27 @@ class AutotileAnimation (AutotileBase):
         animations as (UVAnimation):
             set:
                 _usingIndexedAnimations = true
-                sourcesList = List of UVAnimation()
-                indexList = List of int()
+                values = value.Length
+                sourceIndexes = Dictionary[of UVAnimation, int](values)
+                sourcesList = List of UVAnimation(values)
                 nextIndex = 0
-                for a in value:
-                    i = sourcesList.IndexOf(a)
-                    if i == -1:
-                        sourcesList.Add(a)
-                        indexList.Add(nextIndex)
-                        nextIndex += 1
-                    else:
-                        indexList.Add(i)
+                sourceIndex = 0
 
                 _animationSources       = array(UVAnimation, sourcesList)
-                _animationSourceIndexes = array(int,         indexList)
+                _animationSourceIndexes = array(int,         value.Length)
+                i = 0; values = value.Length;
+                while i < values:
+                    a = value[i]
+                    if sourceIndexes.TryGetValue(a, sourceIndex):
+                        _animationSourceIndexes[i] = sourceIndex
+                    else:
+                        sourcesList.Add(a)
+                        sourceIndexes[a] = nextIndex
+                        _animationSourceIndexes[i] = nextIndex
+                        nextIndex += 1
+                    i += 1
 
+                _animationSources = sourcesList.ToArray()
                 built = false
 
         dirty as bool:
@@ -326,8 +332,11 @@ class AutotileAnimation (AutotileBase):
 
     protected static def TileUVs(t as (AnimationTile), fraction as single, direction as TileDirection, margin as Vector2) as UVAnimation:
         result = UVAnimation(array(UVFrame, t.Length))
-        for i as int, s as AnimationTile in enumerate(t):
+        i = 0
+        while i < t.Length:
+            s = t[i]
             result.frames[i] = UVFrame(s.frames, AutotileBase.TileUVs(s, fraction, direction, margin))
+            i += 1
         return result
 
     def ApplyLongTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]], direction as TileDirection):
@@ -421,15 +430,22 @@ class AutotileAnimation (AutotileBase):
             allFrames.Add(right)
             tilesSpent += 1
 
+        triangles = array(int, 6*tilesSpent)
+        i = 0
+        while i < triangles.Length:
+            triangles[i] = i
+            i+=1
+
         cache.animations = array(UVAnimation, allFrames)
         mf = GetComponent of MeshFilter()
         mf.sharedMesh.Clear()
         mf.sharedMesh.vertices = vertices
-        mf.sharedMesh.triangles = array(int, (i for i in range(6 * tilesSpent)))
+        mf.sharedMesh.triangles = triangles
         mf.sharedMesh.uv = cache.current_uvs(self)
         mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
-        mf.sharedMesh.RecalculateNormals()
-        mf.sharedMesh.RecalculateBounds()
+        ifdef UNITY_EDITOR:
+            mf.sharedMesh.RecalculateNormals()
+            mf.sharedMesh.RecalculateBounds()
         unsavedMesh = true
 
     def ApplyHorizontalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]]):
@@ -446,8 +462,9 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
             mf.sharedMesh.uv = cache.current_uvs(self)
             mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
-            mf.sharedMesh.RecalculateNormals()
-            mf.sharedMesh.RecalculateBounds()
+            ifdef UNITY_EDITOR:
+                mf.sharedMesh.RecalculateNormals()
+                mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
 
     def ApplyVerticalTile(centerTiles as Generic.IEnumerable[of Generic.KeyValuePair[of int, (AnimationTile)]]):
@@ -464,8 +481,9 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.triangles = AutotileBase.doubleTriangles
             mf.sharedMesh.uv = cache.current_uvs(self)
             mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
-            mf.sharedMesh.RecalculateNormals()
-            mf.sharedMesh.RecalculateBounds()
+            ifdef UNITY_EDITOR:
+                mf.sharedMesh.RecalculateNormals()
+                mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
 
     def ApplyTile(tile as (AnimationTile)):
@@ -478,8 +496,9 @@ class AutotileAnimation (AutotileBase):
             mf.sharedMesh.triangles = AutotileBase.singleTriangles
             mf.sharedMesh.uv = cache.current_uvs(self)
             mf.sharedMesh.colors = WhiteColors(mf.sharedMesh)
-            mf.sharedMesh.RecalculateNormals()
-            mf.sharedMesh.RecalculateBounds()
+            ifdef UNITY_EDITOR:
+                mf.sharedMesh.RecalculateNormals()
+                mf.sharedMesh.RecalculateBounds()
             unsavedMesh = true
 
     def CanScaleToCentric():

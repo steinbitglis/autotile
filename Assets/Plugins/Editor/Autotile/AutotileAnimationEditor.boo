@@ -35,7 +35,7 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                 ts = AutotileConfig.config.animationSets[t.tilesetKey]
                 tsm = ts.material if ts
                 mt = tsm.mainTexture if tsm
-                r = t.GetComponent[of Renderer]()
+                r = t.GetComponent[of MeshRenderer]()
                 if mt and r.sharedMaterial != tsm:
                     r.material = tsm
                     EditorUtility.SetDirty(r)
@@ -95,10 +95,9 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                         Undo.RecordObjects(serializedObject.targetObjects, "Change AutotileAnimation tileset")
                     t.tilesetKey = tilesets[newIndex]
                     new_material = AutotileConfig.config.animationSets[t.tilesetKey].material
-                    r = t.GetComponent[of Renderer]()
-                    unless r.sharedMaterial == new_material:
-                        r.material = AutotileConfig.config.animationSets[t.tilesetKey].material
-                        EditorUtility.SetDirty(r)
+                    unless t.GetComponent[of Renderer]().sharedMaterial == new_material:
+                        t.GetComponent[of Renderer]().material = AutotileConfig.config.animationSets[t.tilesetKey].material
+                        EditorUtility.SetDirty(t.GetComponent[of Renderer]())
                     missing_tileset = false
                     Refresh(t) if serializedObject.isEditingMultipleObjects
 
@@ -179,15 +178,15 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
         serializedObject.ApplyModifiedProperties()
         Refresh(tile)
 
-    def RecordAutotiles():
-        affected = array(Component, (tile, tile.transform))
-        Undo.RecordObjects(affected, "Resize/Move Autotile Animations")
+    def SnapshotImmediately():
+        pass
 
     def NormalizeScales():
         tile.transform.localRotation = Quaternion.identity
         tile.transform.localPosition.z = 0.0f
         tile.transform.localScale = tile.SuggestScales()
 
+    private animationOperation as int
     def OnSceneGUI():
         if Event.current.type == EventType.Repaint:
             for t in AutotileBase.allAutotileBases:
@@ -197,9 +196,10 @@ class AutotileAnimationEditor (Editor, TextureScaleProgressListener):
                     EditorUtility.SetDirty(t.localRenderer)
 
         elif Event.current.type == EventType.MouseUp and Event.current.button == 0:
-            RecordAutotiles()
+            Undo.CollapseUndoOperations(animationOperation) if animationOperation
+            animationOperation = 0
             NormalizeScales()
             Refresh(tile)
 
         elif Event.current.type == EventType.MouseDown and Event.current.button == 0:
-            RecordAutotiles()
+            animationOperation = Undo.GetCurrentGroup()

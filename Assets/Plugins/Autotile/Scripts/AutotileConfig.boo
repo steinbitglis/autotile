@@ -13,7 +13,10 @@ class AutotileConfig (ScriptableObject):
                     target = (tilesetsPath[17:])[:-extension.Length] # Resources.Load requires path relative to 'Assets/Resources' minus extension
                     autotileConfig = Resources.Load(target, AutotileConfig)
                 else:
-                    autotileConfig = Resources.LoadAssetAtPath(tilesetsPath, AutotileConfig)
+                    ifdef UNITY_EDITOR:
+                        autotileConfig = UnityEditor.AssetDatabase.LoadAssetAtPath(tilesetsPath, AutotileConfig)
+                    ifdef not UNITY_EDITOR:
+                        pass
             return autotileConfig
 
     public sets = AutotileSetDatabase()

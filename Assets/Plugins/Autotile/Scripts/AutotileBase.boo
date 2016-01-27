@@ -37,10 +37,10 @@ class AutotileAnathomy:
 
 class AutotileBase (MonoBehaviour):
 
-    public static allAutotileBases = System.Collections.Generic.List of AutotileBase()
+    public static allAutotileBases = System.Collections.Generic.HashSet of AutotileBase()
 
     virtual def Awake(): # Only for use in editor
-        allAutotileBases.Add(self) unless self in allAutotileBases
+        allAutotileBases.Add(self) unless allAutotileBases.Contains(self)
 
     virtual def OnDestroy():
         allAutotileBases.Remove(self)
@@ -244,57 +244,73 @@ class AutotileBase (MonoBehaviour):
                 xMax = t.atlasLocation.xMax - margin.x
                 yMin = t.atlasLocation.yMin + margin.y
                 yMax = (1.0f - fraction) * yMin + fraction * t.atlasLocation.yMax - margin.y
+        result0 as Vector2; result1 as Vector2; result2 as Vector2
+        result3 as Vector2; result4 as Vector2; result5 as Vector2
         if t.flipped:
             if t.direction == TileFlipDirection.Horizontal:
-                result = (
-                    Vector2(xMax, yMin),
-                    Vector2(xMax, yMax),
-                    Vector2(xMin, yMax),
-                    Vector2(xMin, yMax),
-                    Vector2(xMin, yMin),
-                    Vector2(xMax, yMin),)
+                result0 = Vector2(xMax, yMin)
+                result1 = Vector2(xMax, yMax)
+                result2 = Vector2(xMin, yMax)
+                result3 = Vector2(xMin, yMax)
+                result4 = Vector2(xMin, yMin)
+                result5 = Vector2(xMax, yMin)
             elif t.direction == TileFlipDirection.Vertical:
-                result = (
-                    Vector2(xMin, yMax),
-                    Vector2(xMin, yMin),
-                    Vector2(xMax, yMin),
-                    Vector2(xMax, yMin),
-                    Vector2(xMax, yMax),
-                    Vector2(xMin, yMax),)
+                result0 = Vector2(xMin, yMax)
+                result1 = Vector2(xMin, yMin)
+                result2 = Vector2(xMax, yMin)
+                result3 = Vector2(xMax, yMin)
+                result4 = Vector2(xMax, yMax)
+                result5 = Vector2(xMin, yMax)
             else: # Both
-                result = (
-                    Vector2(xMax, yMax),
-                    Vector2(xMax, yMin),
-                    Vector2(xMin, yMin),
-                    Vector2(xMin, yMin),
-                    Vector2(xMin, yMax),
-                    Vector2(xMax, yMax),)
+                result0 = Vector2(xMax, yMax)
+                result1 = Vector2(xMax, yMin)
+                result2 = Vector2(xMin, yMin)
+                result3 = Vector2(xMin, yMin)
+                result4 = Vector2(xMin, yMax)
+                result5 = Vector2(xMax, yMax)
         else:
-            result = (
-                Vector2(xMin, yMin),
-                Vector2(xMin, yMax),
-                Vector2(xMax, yMax),
-                Vector2(xMax, yMax),
-                Vector2(xMax, yMin),
-                Vector2(xMin, yMin),)
+            result0 = Vector2(xMin, yMin)
+            result1 = Vector2(xMin, yMax)
+            result2 = Vector2(xMax, yMax)
+            result3 = Vector2(xMax, yMax)
+            result4 = Vector2(xMax, yMin)
+            result5 = Vector2(xMin, yMin)
         if t.rotated:
             if t.rotation == TileRotation.CW:
-                return (result[1], result[2], result[4], result[4], result[5], result[1])
+                return (result1, result2, result4, result4, result5, result1)
             elif t.rotation == TileRotation.CCW:
-                return (result[4], result[5], result[1], result[1], result[2], result[4])
+                return (result4, result5, result1, result1, result2, result4)
             else:
-                return (result[3], result[4], result[5], result[0], result[1], result[2])
+                return (result3, result4, result5, result0, result1, result2)
         else:
-            return result
+            return (result0, result1, result2, result3, result4, result5)
 
     def OffsetVertices2(vertices as (Vector2)) as (Vector2):
-        return array(Vector2, (Vector2(offset.x + v.x, offset.y + v.y) for v in vertices))
+        result = array(Vector2, vertices.Length)
+        i = 0
+        while i < vertices.Length:
+            v = vertices[i]
+            result[i] = Vector2(offset.x+v.x, offset.y+v.y)
+            i += 1
+        return result
 
     def OffsetVertices2(vertices as (Vector3)) as (Vector2):
-        return array(Vector2, (offset + v for v in vertices))
+        result = array(Vector2, vertices.Length)
+        i = 0
+        while i < vertices.Length:
+            v = vertices[i]
+            result[i] = Vector2(offset.x + v.x, offset.y + v.y)
+            i += 1
+        return result
 
     def OffsetVertices(vertices as (Vector3)) as (Vector3):
-        return array(Vector3, (offset + v for v in vertices))
+        result = array(Vector3, vertices.Length)
+        i = 0
+        while i < vertices.Length:
+            v = vertices[i]
+            result[i] = Vector3(offset.x+v.x, offset.y+v.y, offset.z+v.z)
+            i += 1
+        return result
 
     def OffsetPosition() as Vector3:
         return transform.TransformPoint(offset)
