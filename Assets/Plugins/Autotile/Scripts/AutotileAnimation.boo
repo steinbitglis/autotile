@@ -132,7 +132,7 @@ class AutotileAnimation (AutotileBase):
             n = Mathf.Floor((Time.time - lastTime) / _frameDuration) # Mathf.Floor, not Mathf.Round, because we should not project any portion of _frameDuration into the future, it might be changed
             lastTime += n * _frameDuration
             if cache.dirty:
-                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations. Scene refreshing fixes this automatically.", self)
+                Debug.Log("$gameObject needs a refresh, to build indexed AutotileAnimations.", self)
             else:
                 localMesh.uv = cache.next_uvs(self, n cast int)
 
